@@ -24,7 +24,7 @@ export default class Player {
     this.isJumping = false;
 
     this.up = new THREE.Vector3(0, 1, 0);
-    this.forward = new THREE.Vector3(0, 0, -1);
+    this.forward = new THREE.Vector3(0, 0, 1);
     this.right = new THREE.Vector3(1, 0, 0);
 
     this.setModelInstance();
