@@ -12,7 +12,8 @@ export default class Vehicle {
     this.inputManager = this.game.inputManager;
     this.car = new THREE.Group();
     this.car.name = 'Player Vehicle';
-    this.car.position.set(3.2, 0, 7);
+    this.car.position.set(2.8, 0, 3.5);
+    this.car.rotation.y = Math.PI;
     this.scene.add(this.car);
 
     this.isDriving = false;
