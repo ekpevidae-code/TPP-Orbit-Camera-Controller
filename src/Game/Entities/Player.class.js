@@ -214,6 +214,12 @@ export default class Player {
 
       if (this.animation.actions[jumpState]) {
         this.animation.actions[jumpState].reset().fadeIn(0.1).play();
+        this.outfitActions.forEach((actions) => {
+          Object.values(actions).forEach((action) => {
+            if (action.isRunning()) action.fadeOut(0.1);
+          });
+          if (actions[jumpState]) actions[jumpState].reset().fadeIn(0.1).play();
+        });
         this.currentState = jumpState;
       }
     }
@@ -331,6 +337,7 @@ export default class Player {
   update() {
     if (this.game.world && this.game.world.vehicle && this.game.world.vehicle.isDriving) {
       this.animation.mixer.update(this.time.delta);
+      this.outfitMixers.forEach((mixer) => mixer.update(this.time.delta));
       return;
     }
     const actions = this.inputManager.Actions;
@@ -351,7 +358,7 @@ export default class Player {
           step: 0.1,
           label: 'Movement Speed',
         },
-        'Player (Link)'
+        'Player (Human)'
       );
       this.debug.add(
         this,
