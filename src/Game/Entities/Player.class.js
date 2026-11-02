@@ -16,8 +16,9 @@ export default class Player {
     /**
      * Player configurations
      */
-    this.speed = 1.5;
-    this.sprintMultiplier = 2;
+    this.speed = 4.0;
+    this.sprintMultiplier = 1.55;
+    this.smoothedForwardSpeed = 0;
     this.rotationSpeed = 1.5;
     this.velocity = new THREE.Vector3();
     this.currentState = 'idle';
@@ -54,8 +55,9 @@ export default class Player {
       part.name = assetId;
       part.traverse((child) => {
         if (child.isMesh) {
-          child.castShadow = true;
-          child.receiveShadow = true;
+          // Outfit meshes share the body rig; avoid four extra shadow casters on mobile.
+          child.castShadow = false;
+          child.receiveShadow = false;
           if (child.material) {
             child.material.roughness = Math.max(child.material.roughness || 0.7, 0.55);
           }
@@ -70,7 +72,7 @@ export default class Player {
     this.player.traverse((child) => {
       if (child.isMesh) {
         child.castShadow = true;
-        child.receiveShadow = true;
+        child.receiveShadow = false;
         if (child.material) {
           child.material.roughness = Math.max(child.material.roughness || 0.7, 0.55);
         }
@@ -228,25 +230,26 @@ export default class Player {
   updateCharacterMovement(actions) {
     this.velocity.set(0, 0, 0);
 
+    const dt = Math.min(this.time.delta || 0, 0.05);
     const currentSpeed = actions.sprint
       ? this.speed * this.sprintMultiplier
       : this.speed;
-
-    if (actions.forward) {
-      this.velocity.z += currentSpeed * this.time.delta;
-    }
-    if (actions.backward) {
-      this.velocity.z -= currentSpeed * this.time.delta;
-    }
+    const targetForwardSpeed = actions.forward
+      ? currentSpeed
+      : actions.backward
+        ? -currentSpeed
+        : 0;
+    // Exponential acceleration/deceleration keeps starts and stops from feeling abrupt.
+    const response = 1 - Math.exp(-12 * dt);
+    this.smoothedForwardSpeed += (targetForwardSpeed - this.smoothedForwardSpeed) * response;
+    this.velocity.z = this.smoothedForwardSpeed * dt;
 
     let angle = 0;
     if (actions.left && (actions.forward || actions.backward)) {
-      angle = this.rotationSpeed * this.time.delta;
-      this.velocity.x -= currentSpeed * this.time.delta;
+      angle = this.rotationSpeed * dt;
     }
     if (actions.right && (actions.forward || actions.backward)) {
-      angle = -this.rotationSpeed * this.time.delta;
-      this.velocity.x += currentSpeed * this.time.delta;
+      angle = -this.rotationSpeed * dt;
     }
 
     if (actions.jump && !this.isJumping) {
