@@ -202,6 +202,42 @@ export default class Camera {
       return;
     }
 
+    // Dedicated chase camera while driving: stay behind the vehicle and
+    // look down the road instead of using the character's walking offset.
+    const vehicle = world && world.vehicle;
+    if (vehicle && vehicle.isDriving && vehicle.car) {
+      if (this.controls) this.controls.enabled = false;
+
+      const chaseOffset = new THREE.Vector3(0, 3.6, 8.5)
+        .applyQuaternion(vehicle.car.quaternion)
+        .add(vehicle.car.position);
+      const forward = new THREE.Vector3(0, 0, -1)
+        .applyQuaternion(vehicle.car.quaternion);
+      const roadLookAt = vehicle.car.position.clone()
+        .add(new THREE.Vector3(0, 1.25, 0))
+        .addScaledVector(forward, 6);
+
+      this.frameIndependentLerp(
+        this.tppCameraPosition,
+        chaseOffset,
+        5.5,
+        this.game.time.delta
+      );
+      this.frameIndependentLerp(
+        this.tppLookAtOffset,
+        roadLookAt,
+        7.5,
+        this.game.time.delta
+      );
+      this.cameraInstance.position.copy(this.tppCameraPosition);
+      this.cameraInstance.lookAt(this.tppLookAtOffset);
+      return;
+    }
+
+    if (this.controls && this.mode === 'orbit') {
+      this.controls.enabled = true;
+    }
+
     /**
      * Orbit mode update
      */
