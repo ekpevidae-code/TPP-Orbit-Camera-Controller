@@ -126,6 +126,24 @@ export default class Vehicle {
     this.updatePrompt();
   }
 
+  canOccupy(position) {
+    const world = this.game.world;
+    if (world && world.traffic) {
+      for (const item of world.traffic.cars) {
+        if (item.car.position.distanceTo(position) < 3.15) return false;
+      }
+    }
+    if (world && world.pedestrians) {
+      for (const person of world.pedestrians.people) {
+        if (person.root.position.distanceTo(position) < 2.15) return false;
+      }
+    }
+    if (world && world.player && world.player.player && world.player.player.visible) {
+      if (world.player.player.position.distanceTo(position) < 2.05) return false;
+    }
+    return true;
+  }
+
   update() {
     const player = this.game.world && this.game.world.player && this.game.world.player.player;
     if (!player) return;
@@ -158,7 +176,26 @@ export default class Vehicle {
       const steeringFactor = Math.min(1, Math.abs(this.speed) / 5);
       this.car.rotation.y += steering * this.turnSpeed * steeringFactor * dt * (this.speed >= 0 ? 1 : -1);
       const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(this.car.quaternion);
-      this.car.position.addScaledVector(forward, this.speed * dt);
+      const movement = forward.clone().multiplyScalar(this.speed * dt);
+      const next = this.car.position.clone().add(movement);
+      if (this.canOccupy(next)) {
+        this.car.position.copy(next);
+      } else {
+        // Try sliding along one axis so a glancing impact does not freeze steering.
+        const slideX = this.car.position.clone();
+        slideX.x += movement.x;
+        const slideZ = this.car.position.clone();
+        slideZ.z += movement.z;
+        if (Math.abs(movement.x) > Math.abs(movement.z) && this.canOccupy(slideX)) {
+          this.car.position.copy(slideX);
+        } else if (this.canOccupy(slideZ)) {
+          this.car.position.copy(slideZ);
+        } else if (this.canOccupy(slideX)) {
+          this.car.position.copy(slideX);
+        } else {
+          this.speed = 0;
+        }
+      }
       this.wheels.forEach((wheel) => { wheel.rotation.x += this.speed * dt / 0.43; });
     }
 
