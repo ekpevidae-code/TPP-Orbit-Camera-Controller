@@ -96,7 +96,10 @@ resources.on('loaded', () => {
     throw error;
   }
 
-  if (startupPanel) startupPanel.textContent = 'GAME INITIALIZED\\nWaiting for frame monitor…';
+  if (startupPanel) {
+    startupPanel.textContent = 'GAME INITIALIZED\\nStarting live diagnostics…';
+    setTimeout(() => startupPanel && startupPanel.remove(), 1200);
+  }
   progressBar.style.display = 'none';
   progress.style.display = 'none';
 
