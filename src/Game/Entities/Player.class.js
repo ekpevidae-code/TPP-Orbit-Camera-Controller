@@ -228,6 +228,10 @@ export default class Player {
   }
 
   update() {
+    if (this.game.world && this.game.world.vehicle && this.game.world.vehicle.isDriving) {
+      this.animation.mixer.update(this.time.delta);
+      return;
+    }
     const actions = this.inputManager.Actions;
     this.updateCharacterMovement(actions);
     this.animation.mixer.update(this.time.delta);
