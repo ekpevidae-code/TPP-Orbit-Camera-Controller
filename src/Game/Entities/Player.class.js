@@ -133,6 +133,9 @@ export default class Player {
 
     if (this.animation.actions.idle) {
       this.animation.actions.idle.play();
+      this.outfitActions.forEach((actions) => {
+        if (actions.idle) actions.idle.play();
+      });
     }
   }
 
