@@ -38,29 +38,30 @@ export default class CombatSystem {
     if (!player) return;
 
     this.weapon = new THREE.Group();
-    this.weapon.name = 'Player Pistol - held at right hand';
-    const metal = new THREE.MeshStandardMaterial({ color: 0x20272d, metalness: 0.78, roughness: 0.3 });
-    const grip = new THREE.MeshStandardMaterial({ color: 0x29211b, roughness: 0.92 });
-    const barrel = new THREE.Mesh(new THREE.BoxGeometry(0.115, 0.12, 0.58), metal);
-    barrel.position.set(0, 0.055, -0.2);
+    this.weapon.name = 'Pistol attached to the protagonist right hand';
+    const metal = new THREE.MeshStandardMaterial({
+      color: 0x20272d, metalness: 0.82, roughness: 0.28,
+    });
+    const grip = new THREE.MeshStandardMaterial({ color: 0x29211b, roughness: 0.88 });
+
+    // The character faces +Z. The barrel and muzzle therefore point forward (+Z),
+    // rather than backwards behind the character.
+    const barrel = new THREE.Mesh(new THREE.BoxGeometry(0.105, 0.105, 0.48), metal);
+    barrel.position.set(0, 0.045, 0.22);
     this.weapon.add(barrel);
-    const slide = new THREE.Mesh(new THREE.BoxGeometry(0.19, 0.13, 0.42), metal);
-    slide.position.set(0, 0.13, -0.16);
+    const slide = new THREE.Mesh(new THREE.BoxGeometry(0.17, 0.12, 0.39), metal);
+    slide.position.set(0, 0.115, 0.18);
     this.weapon.add(slide);
-    const handle = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.3, 0.17), grip);
-    handle.position.set(0, -0.12, 0.035);
-    handle.rotation.x = -0.18;
+    const handle = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.27, 0.16), grip);
+    handle.position.set(0, -0.105, -0.015);
+    handle.rotation.x = 0.12;
     this.weapon.add(handle);
-    const sight = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.035, 0.06), metal);
-    sight.position.set(0, 0.215, -0.14);
+    const sight = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.03, 0.05), metal);
+    sight.position.set(0, 0.19, 0.18);
     this.weapon.add(sight);
 
-    // The starter character has no supplied weapon-hold animation clip.
-    // Keep the pistol at the character's right-hand position, facing forward.
-    this.weapon.position.set(0.32, 1.08, -0.39);
-    this.weapon.rotation.set(-0.06, 0, 0);
     this.muzzle = new THREE.Object3D();
-    this.muzzle.position.set(0, 0.055, -0.51);
+    this.muzzle.position.set(0, 0.045, 0.49);
     this.weapon.add(this.muzzle);
     this.muzzleFlash = new THREE.Mesh(
       new THREE.SphereGeometry(0.075, 8, 6),
@@ -69,10 +70,22 @@ export default class CombatSystem {
     this.muzzleFlash.position.copy(this.muzzle.position);
     this.muzzleFlash.visible = false;
     this.weapon.add(this.muzzleFlash);
-    this.weapon.visible = true;
-    player.add(this.weapon);
-  }
 
+    // Attach to the actual right-hand bone, not the character's body root.
+    const hand = player.getObjectByName('hand_r');
+    this.weaponHand = hand || player;
+    this.weaponHand.add(this.weapon);
+    if (hand) {
+      this.weapon.position.set(0, -0.015, 0.055);
+      this.weapon.rotation.set(0, 0, 0);
+    } else {
+      // Safe fallback while a replacement rig is still loading or being checked.
+      this.weapon.position.set(-0.45, 1.02, 0.2);
+      this.weapon.rotation.set(0, 0, 0);
+    }
+    this.weapon.visible = true;
+    player.updateMatrixWorld(true);
+  }
   createHud() {
     this.fireButton = document.getElementById('fire-btn');
     this.reloadButton = document.getElementById('reload-btn');
@@ -203,7 +216,8 @@ export default class CombatSystem {
     const horizontal = target.clone().sub(player.position);
     horizontal.y = 0;
     if (horizontal.lengthSq() > 0.001) {
-      const desiredYaw = Math.atan2(-horizontal.x, -horizontal.z);
+      // The replacement human rig's forward direction is +Z.
+      const desiredYaw = Math.atan2(horizontal.x, horizontal.z);
       player.rotation.y = desiredYaw;
     }
     // Keep the weapon aligned with the character's forward direction.
@@ -256,6 +270,14 @@ export default class CombatSystem {
 
   update() {
     const dt = Math.min(this.game.time.delta || 0, 0.05);
+    const player = this.getPlayer();
+    if (this.aiming && player && this.game.world && this.game.world.player) {
+      const aimTarget = this.getAimTarget(player);
+      this.aimCharacterAtTarget(player, aimTarget);
+      if (typeof this.game.world.player.applyWeaponAim === 'function') {
+        this.game.world.player.applyWeaponAim(aimTarget);
+      }
+    }
     this.cooldown = Math.max(0, this.cooldown - dt);
     if (this.triggerHeld && this.cooldown <= 0 && this.reloadTime <= 0) this.fire();
 
