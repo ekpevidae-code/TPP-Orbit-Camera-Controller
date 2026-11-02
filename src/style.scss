@@ -349,3 +349,32 @@ canvas#three {
     }
   }
 }
+
+/* Vehicle interaction */
+.vehicle-btn {
+  position: fixed;
+  right: 22px;
+  bottom: 154px;
+  z-index: 120;
+  padding: 13px 18px;
+  border: 1px solid rgba(255,255,255,0.45);
+  border-radius: 12px;
+  background: rgba(12, 25, 34, 0.88);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  box-shadow: 0 5px 18px rgba(0,0,0,0.35);
+  opacity: 0.72;
+  touch-action: manipulation;
+}
+.vehicle-btn.available,
+.vehicle-btn.driving {
+  opacity: 1;
+  border-color: #8bd6b0;
+  background: rgba(17, 82, 58, 0.94);
+}
+.vehicle-btn:active { transform: scale(0.96); }
+@media (max-width: 768px) {
+  .vehicle-btn { right: 14px; bottom: 128px; padding: 12px 15px; }
+}
