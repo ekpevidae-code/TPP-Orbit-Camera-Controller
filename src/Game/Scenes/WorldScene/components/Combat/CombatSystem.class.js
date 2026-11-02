@@ -168,11 +168,13 @@ export default class CombatSystem {
 
   getAimHit(player) {
     const camera = this.game.camera && this.game.camera.cameraInstance;
-    if (!camera) return null;
+    const peopleGroup = this.game.world && this.game.world.pedestrians && this.game.world.pedestrians.group;
+    if (!camera || !peopleGroup) return null;
     camera.updateMatrixWorld(true);
     this.aimRaycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
-    const hits = this.aimRaycaster.intersectObjects(this.scene.children, true);
-    return hits.find((hit) => !this.isPlayerObject(hit.object, player)) || null;
+    // Only test the small pedestrian target group. Never raycast the entire streamed city.
+    const hits = this.aimRaycaster.intersectObjects(peopleGroup.children, true);
+    return hits[0] || null;
   }
 
   getAimTarget(player) {
@@ -181,7 +183,7 @@ export default class CombatSystem {
     const camera = this.game.camera.cameraInstance;
     const direction = new THREE.Vector3();
     camera.getWorldDirection(direction);
-    return camera.position.clone().addScaledVector(direction, 65);
+    return camera.position.clone().addScaledVector(direction, 55);
   }
 
   renderHud() {
@@ -222,12 +224,15 @@ export default class CombatSystem {
     this.muzzle.getWorldPosition(origin);
     const direction = target.clone().sub(origin).normalize();
     this.raycaster.set(origin, direction);
-    const hits = this.raycaster.intersectObjects(this.scene.children, true);
-    const hit = hits.find((item) => !this.isPlayerObject(item.object, player));
-    const end = hit ? hit.point.clone() : origin.clone().addScaledVector(direction, 65);
+
+    // The target scan is deliberately limited to pedestrians to avoid expensive city-wide raycasts.
+    const peopleGroup = world.pedestrians && world.pedestrians.group;
+    const hits = peopleGroup ? this.raycaster.intersectObjects(peopleGroup.children, true) : [];
+    const hit = hits[0] || null;
+    const end = hit ? hit.point.clone() : target.clone();
 
     this.ammo -= 1;
-    this.cooldown = 0.32;
+    this.cooldown = 0.34;
     this.muzzleFlash.visible = true;
     this.muzzleFlash.scale.setScalar(0.75 + Math.random() * 0.65);
     this.flashTime = 0.075;
@@ -238,7 +243,6 @@ export default class CombatSystem {
     this.scene.add(tracer);
     this.tracers.push({ line: tracer, life: 0.085 });
 
-    // Pedestrian hit detection is tied to the exact ray hit, not the camera ray.
     if (hit && world.pedestrians && typeof world.pedestrians.damagePerson === 'function') {
       let node = hit.object;
       while (node && !node.userData.isPedestrianRoot) node = node.parent;
@@ -253,12 +257,6 @@ export default class CombatSystem {
   update() {
     const dt = Math.min(this.game.time.delta || 0, 0.05);
     this.cooldown = Math.max(0, this.cooldown - dt);
-    if (this.aiming) {
-      const player = this.getPlayer();
-      if (player && this.game.world && !(this.game.world.vehicle && this.game.world.vehicle.isDriving)) {
-        this.aimCharacterAtTarget(player, this.getAimTarget(player));
-      }
-    }
     if (this.triggerHeld && this.cooldown <= 0 && this.reloadTime <= 0) this.fire();
 
     if (this.flashTime > 0) {
