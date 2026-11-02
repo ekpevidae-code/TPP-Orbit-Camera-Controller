@@ -127,8 +127,6 @@ export default class PoliceSystem {
     const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(this.car.quaternion);
     this.car.position.addScaledVector(forward, velocity * dt);
     this.wheels.forEach((wheel) => { wheel.rotation.x += velocity * dt / 0.42; });
-    this.car.position.x = THREE.MathUtils.clamp(this.car.position.x, -86, 86);
-    this.car.position.z = THREE.MathUtils.clamp(this.car.position.z, -86, 86);
     return distance;
   }
 
