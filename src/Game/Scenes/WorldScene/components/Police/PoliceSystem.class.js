@@ -15,10 +15,14 @@ export default class PoliceSystem {
     this.speed = 8;
     this.patrolIndex = 0;
     this.patrolPoints = [
-      new THREE.Vector3(-42, 0, -42),
-      new THREE.Vector3(42, 0, -42),
-      new THREE.Vector3(42, 0, 42),
-      new THREE.Vector3(-42, 0, 42),
+      new THREE.Vector3(-48, 0, -48),
+      new THREE.Vector3(0, 0, -48),
+      new THREE.Vector3(48, 0, -48),
+      new THREE.Vector3(48, 0, 0),
+      new THREE.Vector3(48, 0, 48),
+      new THREE.Vector3(0, 0, 48),
+      new THREE.Vector3(-48, 0, 48),
+      new THREE.Vector3(-48, 0, 0),
     ];
 
     this.car = new THREE.Group();
