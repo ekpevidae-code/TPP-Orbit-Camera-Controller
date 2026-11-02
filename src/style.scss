@@ -454,3 +454,6 @@ canvas#three {
 .fire-btn { right: 16px; bottom: 88px; width: 76px; height: 76px; font-size: 13px; }
 .reload-btn { right: 104px; bottom: 100px; width: 62px; height: 62px; }
 @media (max-width: 768px) { .ammo-hud { right: 12px; top: 58px; bottom: auto; } .fire-btn { right: 14px; bottom: 88px; width: 72px; height: 72px; } .reload-btn { right: 96px; bottom: 100px; width: 58px; height: 58px; } }
+
+.run-btn { position: fixed; right: 112px; bottom: 24px; z-index: 1001; width: 66px; height: 48px; border-radius: 14px; border: 1px solid rgba(255,255,255,.55); background: rgba(25,105,65,.96); color: #fff; font-weight: 900; letter-spacing: .6px; touch-action: none; }
+@media (max-width: 768px) { .run-btn { right: 100px; bottom: 24px; } }
