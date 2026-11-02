@@ -314,7 +314,10 @@ export default class UIController {
     // Touch events
     this.joystickKnob.addEventListener('touchstart', (e) => {
       e.preventDefault();
-      this.startJoystick(e.touches[0]);
+      const touch = e.changedTouches[0];
+      if (!touch) return;
+      this.joystickTouchId = touch.identifier;
+      this.startJoystick(touch);
     });
     
     this.joystickContainer.addEventListener('touchmove', (e) => {
@@ -327,7 +330,18 @@ export default class UIController {
     
     this.joystickContainer.addEventListener('touchend', (e) => {
       e.preventDefault();
-      this.endJoystick();
+      if (Array.from(e.changedTouches).some((touch) => touch.identifier === this.joystickTouchId)) {
+        this.joystickTouchId = null;
+        this.endJoystick();
+      }
+    });
+
+    this.joystickContainer.addEventListener('touchcancel', (e) => {
+      e.preventDefault();
+      if (Array.from(e.changedTouches).some((touch) => touch.identifier === this.joystickTouchId)) {
+        this.joystickTouchId = null;
+        this.endJoystick();
+      }
     });
     
     // Mouse events for desktop testing
