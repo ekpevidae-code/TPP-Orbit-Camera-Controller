@@ -16,6 +16,7 @@ export default class CombatSystem {
     this.raycaster.far = 65;
     this.createWeapon();
     this.createHud();
+    this.createRunControl();
   }
 
   createWeapon() {
@@ -46,6 +47,16 @@ export default class CombatSystem {
     if (this.fireButton) this.fireButton.addEventListener('click', () => this.fire());
     if (this.reloadButton) this.reloadButton.addEventListener('click', () => this.reload());
     this.renderHud();
+  }
+
+  createRunControl() {
+    this.runButton = document.getElementById('run-btn');
+    const input = this.game.world && this.game.world.player && this.game.world.player.inputManager;
+    const setRunning = (active) => { if (input && input.Actions) input.Actions.sprint = active; };
+    if (this.runButton) {
+      this.runButton.addEventListener('pointerdown', (event) => { event.preventDefault(); setRunning(true); });
+      ['pointerup', 'pointercancel', 'pointerleave'].forEach((eventName) => this.runButton.addEventListener(eventName, () => setRunning(false)));
+    }
   }
 
   renderHud() {
@@ -112,5 +123,6 @@ export default class CombatSystem {
     if (this.fireButton) this.fireButton.style.display = driving ? 'none' : 'block';
     if (this.reloadButton) this.reloadButton.style.display = driving ? 'none' : 'block';
     if (this.ammoHud) this.ammoHud.style.display = driving ? 'none' : 'block';
+    if (this.runButton) this.runButton.style.display = driving ? 'none' : 'block';
   }
 }
