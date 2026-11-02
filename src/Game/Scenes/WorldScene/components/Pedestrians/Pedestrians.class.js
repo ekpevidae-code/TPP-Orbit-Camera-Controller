@@ -112,7 +112,29 @@ export default class Pedestrians {
     const dt = Math.min(this.game.time.delta || 0.016, 0.05);
     this.people.forEach((person) => {
       const { route } = person;
-      person.position += route.speed * dt;
+      const proposed = person.position + route.speed * dt;
+      const nextPosition = route.axis === 'z'
+        ? new THREE.Vector3(route.fixed, 0, proposed)
+        : new THREE.Vector3(proposed, 0, route.fixed);
+      const world = this.game.world;
+      let blocked = false;
+
+      if (world && world.vehicle && world.vehicle.car) {
+        if (nextPosition.distanceTo(world.vehicle.car.position) < 2.45) blocked = true;
+      }
+      if (!blocked && world && world.player && world.player.player && world.player.player.visible) {
+        if (nextPosition.distanceTo(world.player.player.position) < 0.9) blocked = true;
+      }
+      if (!blocked) {
+        for (const other of this.people) {
+          if (other === person) continue;
+          if (nextPosition.distanceTo(other.root.position) < 0.62) {
+            blocked = true;
+            break;
+          }
+        }
+      }
+      if (!blocked) person.position = proposed;
 
       if (person.position > route.end) person.position = route.start;
       if (person.position < route.start) person.position = route.end;
