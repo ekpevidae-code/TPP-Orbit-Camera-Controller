@@ -13,6 +13,7 @@ export default class City {
     this.viewRadius = 1;
     this.chunks = new Map();
     this.chunkColliders = new Map();
+    this.chunkQueue = [];
     this.currentChunkX = NaN;
     this.currentChunkZ = NaN;
 
@@ -41,14 +42,17 @@ export default class City {
   }
 
   addBox(group, x, y, z, sx, sy, sz, material, shadow = false) {
-    const mesh = new THREE.Mesh(this.boxGeometry, material);
-    mesh.position.set(x, y, z);
-    mesh.scale.set(sx, sy, sz);
-    mesh.castShadow = shadow;
-    // City detail meshes do not need to participate in the expensive shadow receive pass.
-    mesh.receiveShadow = false;
-    group.add(mesh);
-    return mesh;
+    // Collect repeated box geometry and render it as one instanced draw per material.
+    // The city is decorative; its individual windows and walls do not need separate meshes.
+    if (!this.activeInstanceBatches) this.activeInstanceBatches = new Map();
+    const key = material.uuid;
+    let batch = this.activeInstanceBatches.get(key);
+    if (!batch) {
+      batch = { material, transforms: [] };
+      this.activeInstanceBatches.set(key, batch);
+    }
+    batch.transforms.push({ x, y, z, sx, sy, sz });
+    return null;
   }
 
   createBuilding(group, x, z, index, seed) {
@@ -95,7 +99,7 @@ export default class City {
     const group = new THREE.Group();
     group.name = 'City District ' + key;
     group.position.set(cx * this.chunkSize, 0, cz * this.chunkSize);
-    this.scene.add(group);
+    this.activeInstanceBatches = new Map();
     const seed = Math.abs((cx * 73856093) ^ (cz * 19349663)) % 997;
 
     this.addBox(group, 0, -0.12, 0, 180, 0.2, 180, this.materials.grass);
@@ -142,6 +146,28 @@ export default class City {
       crown.scale.set(0.9, 1.1, 0.9);
       group.add(crown);
     }
+    // Convert hundreds of individual box meshes into a small number of GPU instanced batches.
+    const dummy = new THREE.Object3D();
+    for (const batch of this.activeInstanceBatches.values()) {
+      const instances = new THREE.InstancedMesh(
+        this.boxGeometry,
+        batch.material,
+        batch.transforms.length
+      );
+      instances.castShadow = false;
+      instances.receiveShadow = false;
+      batch.transforms.forEach((transform, index) => {
+        dummy.position.set(transform.x, transform.y, transform.z);
+        dummy.rotation.set(0, 0, 0);
+        dummy.scale.set(transform.sx, transform.sy, transform.sz);
+        dummy.updateMatrix();
+        instances.setMatrixAt(index, dummy.matrix);
+      });
+      instances.instanceMatrix.needsUpdate = true;
+      group.add(instances);
+    }
+    this.activeInstanceBatches = null;
+    this.scene.add(group);
     this.chunks.set(key, group);
     this.chunkColliders.set(key, colliders);
   }
@@ -162,23 +188,39 @@ export default class City {
     const focus = vehicle && vehicle.isDriving ? vehicle.car.position : player ? player.position : new THREE.Vector3();
     const cx = Math.floor(focus.x / this.chunkSize);
     const cz = Math.floor(focus.z / this.chunkSize);
-    if (cx === this.currentChunkX && cz === this.currentChunkZ) return;
-    this.currentChunkX = cx;
-    this.currentChunkZ = cz;
 
-    for (let x = cx - this.viewRadius; x <= cx + this.viewRadius; x++) {
-      for (let z = cz - this.viewRadius; z <= cz + this.viewRadius; z++) {
-        this.createChunk(x, z);
+    if (cx !== this.currentChunkX || cz !== this.currentChunkZ) {
+      this.currentChunkX = cx;
+      this.currentChunkZ = cz;
+      const required = [];
+
+      for (let x = cx - this.viewRadius; x <= cx + this.viewRadius; x++) {
+        for (let z = cz - this.viewRadius; z <= cz + this.viewRadius; z++) {
+          const key = x + ',' + z;
+          if (!this.chunks.has(key)) {
+            required.push({ x, z, distance: Math.abs(x - cx) + Math.abs(z - cz) });
+          }
+        }
+      }
+
+      // Build the closest district first and spread generation across frames.
+      required.sort((a, b) => a.distance - b.distance);
+      this.chunkQueue = required;
+
+      for (const [key, group] of this.chunks) {
+        const [x, z] = key.split(',').map(Number);
+        if (Math.abs(x - cx) > this.viewRadius || Math.abs(z - cz) > this.viewRadius) {
+          this.scene.remove(group);
+          this.chunks.delete(key);
+          this.chunkColliders.delete(key);
+        }
       }
     }
 
-    for (const [key, group] of this.chunks) {
-      const [x, z] = key.split(',').map(Number);
-      if (Math.abs(x - cx) > this.viewRadius || Math.abs(z - cz) > this.viewRadius) {
-        this.scene.remove(group);
-        this.chunks.delete(key);
-        this.chunkColliders.delete(key);
-      }
+    // Never generate all surrounding districts in one frame.
+    if (this.chunkQueue.length) {
+      const next = this.chunkQueue.shift();
+      this.createChunk(next.x, next.z);
     }
   }
 }
