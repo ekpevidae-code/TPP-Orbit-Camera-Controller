@@ -1,8 +1,5 @@
 export default class InputManager {
   constructor(game) {
-    /**
-     * Input manager configurations
-     */
     this.keys = {
       forward: false,
       backward: false,
@@ -10,29 +7,27 @@ export default class InputManager {
       right: false,
       sprint: false,
       jump: false,
+      interact: false,
     };
     this.mapping = {
-      87: 'forward', // W
-      83: 'backward', // S
-      65: 'left', // A
-      68: 'right', // D
-      32: 'jump', // Space
-      16: 'sprint', // Shift
-      38: 'forward', // Arrow Up
-      40: 'backward', // Arrow Down
-      37: 'left', // Arrow Left
-      39: 'right', // Arrow Right
+      87: 'forward',
+      83: 'backward',
+      65: 'left',
+      68: 'right',
+      32: 'jump',
+      16: 'sprint',
+      69: 'interact', // E: enter or exit vehicle
+      38: 'forward',
+      40: 'backward',
+      37: 'left',
+      39: 'right',
     };
     this.game = game;
   }
 
   initialize() {
-    window.addEventListener('keydown', (e) => {
-      this.onKeyDown(e);
-    });
-    window.addEventListener('keyup', (e) => {
-      this.onKeyUp(e);
-    });
+    window.addEventListener('keydown', (e) => this.onKeyDown(e));
+    window.addEventListener('keyup', (e) => this.onKeyUp(e));
   }
 
   onKeyDown(e) {
