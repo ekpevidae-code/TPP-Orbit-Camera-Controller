@@ -13,6 +13,8 @@ import * as THREE from 'three';
 export default class World {
   constructor() {
     this.game = Game.getInstance();
+    // Publish the world before constructing entities that need to look it up.
+    this.game.world = this;
     this.scene = this.game.scene;
     this.scene.fog = new THREE.FogExp2('#96a9ae', 0.008);
 
