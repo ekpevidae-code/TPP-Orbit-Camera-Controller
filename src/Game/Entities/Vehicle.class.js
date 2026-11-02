@@ -128,6 +128,7 @@ export default class Vehicle {
 
   canOccupy(position) {
     const world = this.game.world;
+    if (world && world.city && world.city.isBuildingBlocked(position, 2.15)) return false;
     if (world && world.traffic) {
       for (const item of world.traffic.cars) {
         if (item.car.position.distanceTo(position) < 3.15) return false;
