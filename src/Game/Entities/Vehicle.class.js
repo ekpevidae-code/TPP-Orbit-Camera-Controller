@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import Game from '../../../Game.class';
+import Game from '../Game.class';
 
 /**
  * Lightweight arcade vehicle for the starter city.
