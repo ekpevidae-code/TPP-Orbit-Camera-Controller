@@ -4,6 +4,7 @@ import Lighting from './components/Lighting/Lighting.class';
 import City from './components/City/City.class';
 import Player from '../../Entities/Player.class';
 import Vehicle from '../../Entities/Vehicle.class';
+import Traffic from './components/Traffic/Traffic.class';
 import * as THREE from 'three';
 
 export default class World {
@@ -16,12 +17,14 @@ export default class World {
     this.city = new City();
     this.player = new Player();
     this.vehicle = new Vehicle();
+    this.traffic = new Traffic();
     this.lighting = new Lighting({ helperEnabled: false });
   }
 
   update() {
     this.player.update();
     this.vehicle.update();
+    this.traffic.update();
     this.lighting.update();
   }
 }
