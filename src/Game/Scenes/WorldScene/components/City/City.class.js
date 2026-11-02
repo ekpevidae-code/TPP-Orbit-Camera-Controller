@@ -50,28 +50,43 @@ export default class City {
   }
 
   createBuilding(group, x, z, index, seed) {
-    const width = 15 + ((index * 7 + seed) % 7);
-    const depth = 15 + ((index * 5 + seed * 3) % 7);
-    const height = 9 + ((index * 11 + seed * 7) % 25);
+    const width = 10 + ((index * 7 + seed) % 5);
+    const depth = 10 + ((index * 5 + seed * 3) % 5);
+    const height = 8 + ((index * 11 + seed * 7) % 31);
     const baseY = 0.12;
     const material = this.materials.concrete[(index + seed) % this.materials.concrete.length];
     this.addBox(group, x, baseY + height / 2, z, width, height, depth, material, true);
-    this.addBox(group, x, baseY + height + 0.12, z, width + 0.3, 0.24, depth + 0.3, material, true);
-
-    const floors = Math.max(2, Math.floor(height / 3.2));
+    this.addBox(group, x, baseY + height + 0.18, z, width + 0.45, 0.32, depth + 0.45, material);
+    if ((index + seed) % 2 === 0) {
+      this.addBox(group, x - width * 0.2, height + 0.9, z, width * 0.32, 1.2, depth * 0.34, material, true);
+      this.addBox(group, x + width * 0.22, height + 0.62, z - depth * 0.18, 1.2, 0.7, 1.2, this.materials.lamp);
+    }
+    const floors = Math.max(2, Math.floor(height / 3.1));
     for (let floor = 0; floor < floors; floor++) {
       const y = baseY + 1.8 + floor * 3.05;
       for (const col of [-1, 0, 1]) {
         const wx = x + col * width * 0.27;
-        this.addBox(group, wx, y, z + depth / 2 + 0.015, 1.25, 1.25, 0.04, this.materials.glass);
+        this.addBox(group, wx, y, z + depth / 2 + 0.015, 0.95, 1.25, 0.045, this.materials.glass);
+        this.addBox(group, wx, y, z - depth / 2 - 0.015, 0.95, 1.25, 0.045, this.materials.glass);
+      }
+      for (const side of [-1, 1]) {
+        for (const col of [-1, 1]) {
+          this.addBox(group, x + side * (width / 2 + 0.015), y, z + col * depth * 0.27, 0.045, 1.2, 0.95, this.materials.glass);
+        }
       }
     }
     if ((index + seed) % 3 !== 1) {
-      this.addBox(group, x, 1.15, z + depth / 2 + 0.05, width * 0.7, 1.65, 0.07, this.materials.shopGlass);
-      this.addBox(group, x, 2.25, z + depth / 2 + 0.1, width * 0.82, 0.38, 0.18, this.materials.sign);
+      this.addBox(group, x, 1.22, z + depth / 2 + 0.055, width * 0.72, 1.75, 0.08, this.materials.shopGlass);
+      this.addBox(group, x, 2.35, z + depth / 2 + 0.12, width * 0.86, 0.34, 0.22, this.materials.sign);
+      this.addBox(group, x + width * 0.34, 1.05, z + depth / 2 + 0.12, 0.72, 2.05, 0.1, this.materials.lamp);
+      this.addBox(group, x, 2.55, z + depth / 2 + 0.32, width * 0.9, 0.12, 0.9, this.materials.sign);
+    }
+    if ((index + seed) % 2 === 1) {
+      for (let floor = 1; floor < floors; floor += 2) {
+        this.addBox(group, x + width / 2 + 0.28, baseY + 1.2 + floor * 3.05, z, 0.48, 0.42, 0.72, this.materials.lamp);
+      }
     }
   }
-
   createChunk(cx, cz) {
     const key = cx + ',' + cz;
     if (this.chunks.has(key)) return;
@@ -97,11 +112,15 @@ export default class City {
       }
     }
 
-    // Buildings fill four safe blocks in each district, away from the roads.
+    // Several smaller buildings fill each block while leaving alley access.
     let index = 0;
-    for (const x of [-30, 30]) {
-      for (const z of [-30, 30]) {
-        this.createBuilding(group, x, z, index++, seed);
+    for (const blockX of [-30, 30]) {
+      for (const blockZ of [-30, 30]) {
+        for (const ox of [-13, 13]) {
+          for (const oz of [-13, 13]) {
+            this.createBuilding(group, blockX + ox, blockZ + oz, index++, seed);
+          }
+        }
       }
     }
 
