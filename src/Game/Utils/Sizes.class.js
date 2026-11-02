@@ -3,7 +3,7 @@ import EventEmitter from './EventEmitter.class';
 export default class Sizes extends EventEmitter {
   getPixelRatioLimit() {
     const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints || 0) > 0;
-    return isTouch ? 1.25 : 1.5;
+    return isTouch ? 0.9 : 1.5;
   }
 
   constructor() {
