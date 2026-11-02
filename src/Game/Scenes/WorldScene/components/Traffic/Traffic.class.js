@@ -58,16 +58,46 @@ export default class Traffic {
 
   update() {
     const dt = Math.min(this.game.time.delta || 0, 0.05);
-    this.cars.forEach(({ car, direction, speed, axis }) => {
+    this.cars.forEach((item, index) => {
+      const { car, direction, speed, axis } = item;
+      const next = car.position.clone();
       if (axis === 'z') {
-        car.position.z += direction * speed * dt;
-        if (car.position.z > 88) car.position.z = -88;
-        if (car.position.z < -88) car.position.z = 88;
+        next.z += direction * speed * dt;
+        if (next.z > 88) next.z = -88;
+        if (next.z < -88) next.z = 88;
       } else {
-        car.position.x += direction * speed * dt;
-        if (car.position.x > 88) car.position.x = -88;
-        if (car.position.x < -88) car.position.x = 88;
+        next.x += direction * speed * dt;
+        if (next.x > 88) next.x = -88;
+        if (next.x < -88) next.x = 88;
       }
+
+      let blocked = false;
+      for (let otherIndex = 0; otherIndex < this.cars.length; otherIndex++) {
+        if (otherIndex === index) continue;
+        if (next.distanceTo(this.cars[otherIndex].car.position) < 3.65) {
+          blocked = true;
+          break;
+        }
+      }
+
+      const world = this.game.world;
+      if (!blocked && world && world.vehicle && world.vehicle.car) {
+        if (next.distanceTo(world.vehicle.car.position) < 3.65) blocked = true;
+      }
+      if (!blocked && world && world.player && world.player.player && world.player.player.visible) {
+        if (next.distanceTo(world.player.player.position) < 2.15) blocked = true;
+      }
+      if (!blocked && world && world.pedestrians) {
+        for (const person of world.pedestrians.people) {
+          if (next.distanceTo(person.root.position) < 2.05) {
+            blocked = true;
+            break;
+          }
+        }
+      }
+
+      // Traffic waits rather than passing through another road user.
+      if (!blocked) car.position.copy(next);
     });
   }
 }
