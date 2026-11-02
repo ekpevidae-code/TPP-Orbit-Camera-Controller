@@ -199,9 +199,6 @@ export default class Vehicle {
       this.wheels.forEach((wheel) => { wheel.rotation.x += this.speed * dt / 0.43; });
     }
 
-    // Keep the arcade car on the drivable starter district.
-    this.car.position.x = THREE.MathUtils.clamp(this.car.position.x, -86, 86);
-    this.car.position.z = THREE.MathUtils.clamp(this.car.position.z, -86, 86);
     player.position.copy(this.car.position);
     player.rotation.copy(this.car.rotation);
   }
