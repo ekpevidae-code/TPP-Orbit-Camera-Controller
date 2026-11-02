@@ -38,7 +38,7 @@ export default class Lighting {
     this.keyLight.userData.lightType = 'key';
     this.keyLight.position.copy(this.originalKeyOffset);
     this.keyLight.castShadow = true;
-    this.keyLight.shadow.mapSize.set(1024, 1024);
+    this.keyLight.shadow.mapSize.set(512, 512);
     this.keyLight.shadow.bias = 0.00005;
     this.keyLight.shadow.normalBias = 0.03;
     this.scene.add(this.keyLight);
