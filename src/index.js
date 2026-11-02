@@ -24,14 +24,14 @@ if (isTouchDevice) {
     whiteSpace: 'pre-wrap',
     pointerEvents: 'none',
   });
-  startupPanel.textContent = 'GAME STARTUP\\nPreparing assets…';
+  startupPanel.textContent = 'GAME STARTUP\nPreparing assets…';
   document.body.appendChild(startupPanel);
 
   window.addEventListener('error', (event) => {
-    startupPanel.textContent = 'STARTUP JAVASCRIPT ERROR\\n' + String(event.message || 'Unknown error').slice(0, 220);
+    startupPanel.textContent = 'STARTUP JAVASCRIPT ERROR\n' + String(event.message || 'Unknown error').slice(0, 220);
   });
   window.addEventListener('unhandledrejection', (event) => {
-    startupPanel.textContent = 'STARTUP ASYNC ERROR\\n' + String(event.reason || 'Unknown rejection').slice(0, 220);
+    startupPanel.textContent = 'STARTUP ASYNC ERROR\n' + String(event.reason || 'Unknown rejection').slice(0, 220);
   });
 }
 
@@ -39,7 +39,7 @@ let startupTimedOut = false;
 const startupTimer = setTimeout(() => {
   startupTimedOut = true;
   if (startupPanel) {
-    startupPanel.textContent = 'ASSET LOADING TIMEOUT\\nThe game has not finished loading after 45 seconds.\\n' + startupPanel.textContent;
+    startupPanel.textContent = 'ASSET LOADING TIMEOUT\nThe game has not finished loading after 45 seconds.\n' + startupPanel.textContent;
   }
 }, 45000);
 
@@ -61,7 +61,7 @@ resources.on('progress', ({ id, itemsLoaded, itemsTotal, percent }) => {
     );
   }
   if (startupPanel && !startupTimedOut) {
-    startupPanel.textContent = 'LOADING GAME ASSETS\\n' + id + '\\n' + itemsLoaded + '/' + itemsTotal + ' (' + percent.toFixed(0) + '%)';
+    startupPanel.textContent = 'LOADING GAME ASSETS\n' + id + '\n' + itemsLoaded + '/' + itemsTotal + ' (' + percent.toFixed(0) + '%)';
   }
 });
 
@@ -71,14 +71,14 @@ resources.on('error', ({ id, url, itemsLoaded, itemsTotal }) => {
   );
   startupErrors.push(id + ': ' + url);
   if (startupPanel) {
-    startupPanel.textContent = 'ASSET LOAD ERROR\\n' + startupErrors.slice(-3).join('\\n') + '\\nLoaded: ' + itemsLoaded + '/' + itemsTotal;
+    startupPanel.textContent = 'ASSET LOAD ERROR\n' + startupErrors.slice(-3).join('\n') + '\nLoaded: ' + itemsLoaded + '/' + itemsTotal;
   }
 });
 
 resources.on('loaded', () => {
   clearTimeout(startupTimer);
   if (startupPanel) {
-    startupPanel.textContent = 'ASSETS LOADED\\nStarting 3D engine…';
+    startupPanel.textContent = 'ASSETS LOADED\nStarting 3D engine…';
   }
   if (isDebugMode) {
     if (Object.keys(resources.items).length) {
@@ -92,12 +92,12 @@ resources.on('loaded', () => {
     new Game(document.getElementById('three'), resources, isDebugMode);
   } catch (error) {
     console.error('Game initialization failed:', error);
-    if (startupPanel) startupPanel.textContent = 'GAME INITIALIZATION ERROR\\n' + String(error && error.stack || error).slice(0, 500);
+    if (startupPanel) startupPanel.textContent = 'GAME INITIALIZATION ERROR\n' + String(error && error.stack || error).slice(0, 500);
     throw error;
   }
 
   if (startupPanel) {
-    startupPanel.textContent = 'GAME INITIALIZED\\nStarting live diagnostics…';
+    startupPanel.textContent = 'GAME INITIALIZED\nStarting live diagnostics…';
     setTimeout(() => startupPanel && startupPanel.remove(), 1200);
   }
   progressBar.style.display = 'none';
