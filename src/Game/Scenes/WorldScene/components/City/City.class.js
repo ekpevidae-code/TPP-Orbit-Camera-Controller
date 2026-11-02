@@ -112,14 +112,12 @@ export default class City {
       }
     }
 
-    // Several smaller buildings fill each block while leaving alley access.
+    // Two varied buildings per block leave space for alleys and pedestrian access.
     let index = 0;
     for (const blockX of [-30, 30]) {
       for (const blockZ of [-30, 30]) {
         for (const ox of [-13, 13]) {
-          for (const oz of [-13, 13]) {
-            this.createBuilding(group, blockX + ox, blockZ + oz, index++, seed);
-          }
+          this.createBuilding(group, blockX + ox, blockZ, index++, seed);
         }
       }
     }
