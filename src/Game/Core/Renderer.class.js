@@ -74,7 +74,7 @@ export default class Renderer {
       whiteSpace: 'pre',
       pointerEvents: 'none',
     });
-    this.diagnosticPanel.textContent = 'GAME DIAGNOSTICS\\nStarting frame monitor…';
+    this.diagnosticPanel.textContent = 'GAME DIAGNOSTICS\nStarting frame monitor…';
     document.body.appendChild(this.diagnosticPanel);
 
     this.diagnosticFrames = 0;
@@ -85,18 +85,18 @@ export default class Renderer {
     this.canvas.addEventListener('webglcontextlost', (event) => {
       event.preventDefault();
       this.diagnosticLost = true;
-      this.diagnosticPanel.textContent = 'WEBGL CONTEXT LOST\\nThe phone graphics system stopped the game.';
+      this.diagnosticPanel.textContent = 'WEBGL CONTEXT LOST\nThe phone graphics system stopped the game.';
     });
 
     window.addEventListener('error', (event) => {
       if (this.diagnosticPanel) {
-        this.diagnosticPanel.textContent = 'JAVASCRIPT ERROR\\n' + String(event.message || 'Unknown error').slice(0, 140);
+        this.diagnosticPanel.textContent = 'JAVASCRIPT ERROR\n' + String(event.message || 'Unknown error').slice(0, 140);
       }
     });
 
     window.addEventListener('unhandledrejection', (event) => {
       if (this.diagnosticPanel) {
-        this.diagnosticPanel.textContent = 'ASYNC ERROR\\n' + String(event.reason || 'Unknown rejection').slice(0, 140);
+        this.diagnosticPanel.textContent = 'ASYNC ERROR\n' + String(event.reason || 'Unknown rejection').slice(0, 140);
       }
     });
   }
@@ -125,7 +125,7 @@ export default class Renderer {
       'Textures: ' + info.memory.textures,
       'JS heap: ' + heap,
       'Shadows: ' + (this.rendererInstance.shadowMap.enabled ? 'ON' : 'OFF'),
-    ].join('\\n');
+    ].join('\n');
   }
 
   resize() {
