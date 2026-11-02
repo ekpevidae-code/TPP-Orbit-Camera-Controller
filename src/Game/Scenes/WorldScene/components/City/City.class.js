@@ -45,7 +45,8 @@ export default class City {
     mesh.position.set(x, y, z);
     mesh.scale.set(sx, sy, sz);
     mesh.castShadow = shadow;
-    mesh.receiveShadow = true;
+    // City detail meshes do not need to participate in the expensive shadow receive pass.
+    mesh.receiveShadow = false;
     group.add(mesh);
     return mesh;
   }
