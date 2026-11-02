@@ -63,9 +63,11 @@ export default class Player {
       if (child.isMesh) {
         const texture = child.material.map;
 
-        child.material = new THREE.MeshToonMaterial({
-          map: texture,
-          gradientMap: this.gradientTexture,
+        child.material = new THREE.MeshStandardMaterial({
+          map: texture || null,
+          color: texture ? 0xffffff : (child.material.color ? child.material.color.clone() : 0xffffff),
+          roughness: 0.78,
+          metalness: 0.02,
         });
 
         child.castShadow = true;
