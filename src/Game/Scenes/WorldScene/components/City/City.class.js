@@ -172,6 +172,15 @@ export default class City {
     this.chunkColliders.set(key, colliders);
   }
 
+  disposeChunk(group) {
+    // InstancedMesh owns a GPU-side instance buffer; release it when a district streams out.
+    group.traverse((object) => {
+      if (object.isInstancedMesh && typeof object.dispose === 'function') {
+        object.dispose();
+      }
+    });
+  }
+
   isBuildingBlocked(position, radius = 2.1) {
     for (const bounds of this.chunkColliders.values()) {
       for (const box of bounds) {
@@ -211,6 +220,7 @@ export default class City {
         const [x, z] = key.split(',').map(Number);
         if (Math.abs(x - cx) > this.viewRadius || Math.abs(z - cz) > this.viewRadius) {
           this.scene.remove(group);
+          this.disposeChunk(group);
           this.chunks.delete(key);
           this.chunkColliders.delete(key);
         }
