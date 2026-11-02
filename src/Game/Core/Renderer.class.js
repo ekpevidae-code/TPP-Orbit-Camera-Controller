@@ -36,13 +36,14 @@ export default class Renderer {
 
     this.rendererInstance = new THREE.WebGLRenderer({
       canvas: this.canvas,
-      antialias: true,
+      // Mobile GPUs benefit more from a stable frame rate than browser MSAA.
+      antialias: !('ontouchstart' in window) && (navigator.maxTouchPoints || 0) === 0,
     });
 
     this.rendererInstance.toneMapping = THREE.NeutralToneMapping;
     this.rendererInstance.toneMappingExposure = 1.75;
     this.rendererInstance.shadowMap.enabled = true;
-    this.rendererInstance.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.rendererInstance.shadowMap.type = THREE.PCFShadowMap;
     this.rendererInstance.setSize(this.sizes.width, this.sizes.height);
     this.rendererInstance.setPixelRatio(this.sizes.pixelRatio);
 
