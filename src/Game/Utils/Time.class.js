@@ -19,7 +19,8 @@ export default class Time extends EventEmitter {
 
   animate() {
     const currentTime = Date.now();
-    this.delta = (currentTime - this.current) / 1000;
+    // Prevent long frames or mobile tab-resume pauses from causing physics and camera jumps.
+    this.delta = Math.min((currentTime - this.current) / 1000, 0.05);
     this.current = currentTime;
     this.elapsedTime = (this.current - this.start) / 1000;
 
