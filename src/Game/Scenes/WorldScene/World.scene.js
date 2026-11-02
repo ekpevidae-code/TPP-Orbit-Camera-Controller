@@ -6,6 +6,7 @@ import Player from '../../Entities/Player.class';
 import Vehicle from '../../Entities/Vehicle.class';
 import Traffic from './components/Traffic/Traffic.class';
 import Pedestrians from './components/Pedestrians/Pedestrians.class';
+import PoliceSystem from './components/Police/PoliceSystem.class';
 import * as THREE from 'three';
 
 export default class World {
@@ -20,6 +21,7 @@ export default class World {
     this.vehicle = new Vehicle();
     this.traffic = new Traffic();
     this.pedestrians = new Pedestrians();
+    this.police = new PoliceSystem();
     this.lighting = new Lighting({ helperEnabled: false });
   }
 
@@ -28,6 +30,7 @@ export default class World {
     this.vehicle.update();
     this.traffic.update();
     this.pedestrians.update();
+    this.police.update();
     this.lighting.update();
   }
 }
