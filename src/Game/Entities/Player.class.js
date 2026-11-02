@@ -39,40 +39,47 @@ export default class Player {
 
   setModelInstance() {
     this.player = this.modelResource.scene;
-    this.player.position.set(0, 0.0, 0);
+    this.player.position.set(0, 0, 0);
+    this.player.scale.setScalar(1);
+    this.outfitMixers = [];
+    this.outfitActions = [];
 
-    const gradientSteps = 3;
-    const colors = new Uint8Array(gradientSteps);
+    // The body, hair and garments are separate GLBs but share the same
+    // 53-bone MakeHuman game rig. Keep their own skin skeletons and drive
+    // each outfit with the same named locomotion clips.
+    ['playerHair', 'playerShirt', 'playerJeans', 'playerShoes'].forEach((assetId) => {
+      const resource = this.resources.items[assetId];
+      if (!resource || !resource.scene) return;
+      const part = resource.scene;
+      part.name = assetId;
+      part.traverse((child) => {
+        if (child.isMesh) {
+          child.castShadow = true;
+          child.receiveShadow = true;
+          if (child.material) {
+            child.material.roughness = Math.max(child.material.roughness || 0.7, 0.55);
+          }
+        }
+      });
+      this.player.add(part);
+      this.outfitMixers.push(new THREE.AnimationMixer(part));
+      this.outfitActions.push({});
+    });
 
-    for (let i = 0; i < gradientSteps; i++) {
-      colors[i] = Math.floor((i / (gradientSteps - 1)) * 255);
-    }
-
-    this.gradientTexture = new THREE.DataTexture(
-      colors,
-      gradientSteps,
-      1,
-      THREE.RedFormat
-    );
-
-    this.gradientTexture.magFilter = THREE.NearestFilter;
-    this.gradientTexture.minFilter = THREE.NearestFilter;
-    this.gradientTexture.needsUpdate = true;
-
+    // Preserve the source PBR materials, normal maps and skin textures.
     this.player.traverse((child) => {
       if (child.isMesh) {
-        const texture = child.material.map;
-
-        child.material = new THREE.MeshStandardMaterial({
-          map: texture || null,
-          color: texture ? 0xffffff : (child.material.color ? child.material.color.clone() : 0xffffff),
-          roughness: 0.78,
-          metalness: 0.02,
-        });
-
         child.castShadow = true;
         child.receiveShadow = true;
+        if (child.material) {
+          child.material.roughness = Math.max(child.material.roughness || 0.7, 0.55);
+        }
       }
+    });
+
+    this.weaponBones = {};
+    ['upperarm_r', 'lowerarm_r', 'hand_r', 'upperarm_l', 'lowerarm_l', 'hand_l'].forEach((name) => {
+      this.weaponBones[name] = this.player.getObjectByName(name);
     });
 
     this.scene.add(this.player);
@@ -83,31 +90,38 @@ export default class Player {
     this.animation.mixer = new THREE.AnimationMixer(this.player);
     this.animation.actions = {};
 
+    const clipsByName = new Map(
+      (this.modelResource.animations || []).map((clip) => [clip.name.toLowerCase(), clip])
+    );
     const animationMap = {
-      idle: 0,
-      jump_in_place: 1,
-      jumping_while_move_backward: 2,
-      jumping_while_move_forward: 3,
-      run_backward: 4,
-      run_forward: 5,
-      walk_backward: 6,
-      walk_forward: 7,
+      idle: 'idle',
+      jump_in_place: 'jump',
+      jumping_while_move_backward: 'jump',
+      jumping_while_move_forward: 'jump',
+      run_backward: 'walk_back',
+      run_forward: 'run',
+      walk_backward: 'walk_back',
+      walk_forward: 'walk',
     };
 
-    Object.keys(animationMap).forEach((key) => {
-      const index = animationMap[key];
-      if (this.modelResource.animations[index]) {
-        this.animation.actions[key] = this.animation.mixer.clipAction(
-          this.modelResource.animations[index]
-        );
-
-        if (key.includes('jump')) {
-          this.animation.actions[key].setLoop(THREE.LoopOnce);
-          this.animation.actions[key].clampWhenFinished = true;
-        } else {
-          this.animation.actions[key].setLoop(THREE.LoopRepeat);
-        }
+    Object.entries(animationMap).forEach(([key, clipName]) => {
+      const clip = clipsByName.get(clipName);
+      if (!clip) return;
+      this.animation.actions[key] = this.animation.mixer.clipAction(clip);
+      if (key.includes('jump')) {
+        this.animation.actions[key].setLoop(THREE.LoopOnce);
+        this.animation.actions[key].clampWhenFinished = true;
+      } else {
+        this.animation.actions[key].setLoop(THREE.LoopRepeat);
       }
+    });
+
+    // Bind the same clip tracks to the matching bones in the clothing and hair rigs.
+    this.outfitMixers.forEach((mixer, index) => {
+      Object.entries(animationMap).forEach(([key, clipName]) => {
+        const clip = clipsByName.get(clipName);
+        if (clip) this.outfitActions[index][key] = mixer.clipAction(clip);
+      });
     });
 
     this.animation.mixer.addEventListener('finished', (e) => {
@@ -135,6 +149,15 @@ export default class Player {
     }
 
     newAction.reset().fadeIn(0.2).play();
+    this.outfitActions.forEach((actions) => {
+      const next = actions[newState];
+      if (next) {
+        Object.values(actions).forEach((action) => {
+          if (action.isRunning()) action.fadeOut(0.2);
+        });
+        next.reset().fadeIn(0.2).play();
+      }
+    });
     this.currentState = newState;
   }
 
@@ -245,6 +268,63 @@ export default class Player {
     if (blocked) this.player.position.copy(previousPosition);
   }
 
+  orientArmBone(bone, childBone, targetWorld) {
+    if (!bone || !childBone || !bone.parent) return;
+    bone.updateMatrixWorld(true);
+    childBone.updateMatrixWorld(true);
+    const childWorld = new THREE.Vector3();
+    const boneWorld = new THREE.Vector3();
+    childBone.getWorldPosition(childWorld);
+    bone.getWorldPosition(boneWorld);
+
+    const currentAxisLocal = bone.worldToLocal(childWorld.clone()).normalize();
+    const currentAxisParent = currentAxisLocal.applyQuaternion(bone.quaternion).normalize();
+    const targetParent = bone.parent.worldToLocal(targetWorld.clone());
+    const boneParent = bone.position.clone();
+    const desiredAxisParent = targetParent.sub(boneParent).normalize();
+    if (desiredAxisParent.lengthSq() < 0.001) return;
+
+    const correction = new THREE.Quaternion().setFromUnitVectors(
+      currentAxisParent,
+      desiredAxisParent
+    );
+    bone.quaternion.premultiply(correction);
+    bone.updateMatrixWorld(true);
+  }
+
+  applyWeaponAim(targetWorld) {
+    if (!targetWorld || !this.weaponBones) return;
+    const b = this.weaponBones;
+    const playerPosition = this.player.position;
+    const aimDirection = targetWorld.clone().sub(playerPosition);
+    aimDirection.y = 0;
+    if (aimDirection.lengthSq() < 0.001) return;
+    aimDirection.normalize();
+
+    const rightShoulder = new THREE.Vector3();
+    if (b.upperarm_r) b.upperarm_r.getWorldPosition(rightShoulder);
+    const rightUpperTarget = rightShoulder.clone()
+      .addScaledVector(aimDirection, 0.42)
+      .add(new THREE.Vector3(0, -0.08, 0));
+    const rightElbowTarget = rightUpperTarget.clone()
+      .addScaledVector(aimDirection, 0.32)
+      .add(new THREE.Vector3(0, -0.06, 0));
+    this.orientArmBone(b.upperarm_r, b.lowerarm_r, rightUpperTarget);
+    this.orientArmBone(b.lowerarm_r, b.hand_r, rightElbowTarget);
+
+    // Bring the left forearm across to support the pistol grip.
+    const rightHand = new THREE.Vector3();
+    if (b.hand_r) b.hand_r.getWorldPosition(rightHand);
+    const leftShoulder = new THREE.Vector3();
+    if (b.upperarm_l) b.upperarm_l.getWorldPosition(leftShoulder);
+    const leftTarget = rightHand.clone().addScaledVector(aimDirection, 0.08);
+    const leftElbowTarget = leftShoulder.clone()
+      .lerp(leftTarget, 0.62)
+      .add(new THREE.Vector3(0, -0.08, 0));
+    this.orientArmBone(b.upperarm_l, b.lowerarm_l, leftElbowTarget);
+    this.orientArmBone(b.lowerarm_l, b.hand_l, leftTarget);
+  }
+
   update() {
     if (this.game.world && this.game.world.vehicle && this.game.world.vehicle.isDriving) {
       this.animation.mixer.update(this.time.delta);
@@ -253,10 +333,11 @@ export default class Player {
     const actions = this.inputManager.Actions;
     this.updateCharacterMovement(actions);
     this.animation.mixer.update(this.time.delta);
+    this.outfitMixers.forEach((mixer) => mixer.update(this.time.delta));
   }
 
   initGUI() {
-    this.debug.addFolder('Player (Link)').close();
+    this.debug.addFolder('Player (Human)').close();
     if (this.isDebugMode) {
       this.debug.add(
         this,
