@@ -12,6 +12,7 @@ export default class City {
     this.chunkSize = 180;
     this.viewRadius = 1;
     this.chunks = new Map();
+    this.chunkColliders = new Map();
     this.currentChunkX = NaN;
     this.currentChunkZ = NaN;
 
@@ -113,11 +114,18 @@ export default class City {
     }
 
     // Two varied buildings per block leave space for alleys and pedestrian access.
+    const colliders = [];
     let index = 0;
     for (const blockX of [-30, 30]) {
       for (const blockZ of [-30, 30]) {
         for (const ox of [-13, 13]) {
-          this.createBuilding(group, blockX + ox, blockZ, index++, seed);
+          const bx = blockX + ox;
+          const bz = blockZ;
+          const buildingIndex = index++;
+          this.createBuilding(group, bx, bz, buildingIndex, seed);
+          const width = 10 + ((buildingIndex * 7 + seed) % 5);
+          const depth = 10 + ((buildingIndex * 5 + seed * 3) % 5);
+          colliders.push({ minX: cx * this.chunkSize + bx - width / 2 - 0.9, maxX: cx * this.chunkSize + bx + width / 2 + 0.9, minZ: cz * this.chunkSize + bz - depth / 2 - 0.9, maxZ: cz * this.chunkSize + bz + depth / 2 + 0.9 });
         }
       }
     }
@@ -134,6 +142,16 @@ export default class City {
       group.add(crown);
     }
     this.chunks.set(key, group);
+    this.chunkColliders.set(key, colliders);
+  }
+
+  isBuildingBlocked(position, radius = 2.1) {
+    for (const bounds of this.chunkColliders.values()) {
+      for (const box of bounds) {
+        if (position.x + radius > box.minX && position.x - radius < box.maxX && position.z + radius > box.minZ && position.z - radius < box.maxZ) return true;
+      }
+    }
+    return false;
   }
 
   update() {
@@ -158,6 +176,7 @@ export default class City {
       if (Math.abs(x - cx) > this.viewRadius || Math.abs(z - cz) > this.viewRadius) {
         this.scene.remove(group);
         this.chunks.delete(key);
+        this.chunkColliders.delete(key);
       }
     }
   }
