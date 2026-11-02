@@ -1,7 +1,10 @@
 import * as THREE from 'three';
 import Game from '../../../../Game.class';
 
-/** First-person-feeling third-person pistol prototype with mobile fire/reload controls. */
+/**
+ * Third-person weapon controls.
+ * The reticle chooses the target; the shot always starts at the character's muzzle.
+ */
 export default class CombatSystem {
   constructor() {
     this.game = Game.getInstance();
@@ -13,34 +16,51 @@ export default class CombatSystem {
     this.reloadTime = 0;
     this.tracers = [];
     this.raycaster = new THREE.Raycaster();
-    this.raycaster.far = 65;
+    this.raycaster.far = 90;
+    this.aimRaycaster = new THREE.Raycaster();
+    this.aimRaycaster.far = 90;
+    this.triggerHeld = false;
+    this.aiming = false;
+    this.runPointerId = null;
+    this.firePointerId = null;
+    this.flashTime = 0;
     this.createWeapon();
     this.createHud();
     this.createRunControl();
-    this.aimRaycaster = new THREE.Raycaster();
-    this.aimRaycaster.far = 90;
+  }
+
+  getPlayer() {
+    return this.game.world && this.game.world.player && this.game.world.player.player;
   }
 
   createWeapon() {
-    const player = this.game.world && this.game.world.player && this.game.world.player.player;
+    const player = this.getPlayer();
     if (!player) return;
+
     this.weapon = new THREE.Group();
-    const metal = new THREE.MeshStandardMaterial({ color: 0x242a30, metalness: 0.82, roughness: 0.28 });
+    this.weapon.name = 'Player Pistol - held at right hand';
+    const metal = new THREE.MeshStandardMaterial({ color: 0x20272d, metalness: 0.78, roughness: 0.3 });
     const grip = new THREE.MeshStandardMaterial({ color: 0x29211b, roughness: 0.92 });
-    const barrel = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.13, 0.62), metal);
-    barrel.position.set(0, 0.02, -0.2);
+    const barrel = new THREE.Mesh(new THREE.BoxGeometry(0.115, 0.12, 0.58), metal);
+    barrel.position.set(0, 0.055, -0.2);
     this.weapon.add(barrel);
-    const slide = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.16, 0.43), metal);
-    slide.position.set(0, 0.12, -0.16);
+    const slide = new THREE.Mesh(new THREE.BoxGeometry(0.19, 0.13, 0.42), metal);
+    slide.position.set(0, 0.13, -0.16);
     this.weapon.add(slide);
-    const handle = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.32, 0.18), grip);
-    handle.position.set(0, -0.12, 0.04);
+    const handle = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.3, 0.17), grip);
+    handle.position.set(0, -0.12, 0.035);
     handle.rotation.x = -0.18;
     this.weapon.add(handle);
-    this.weapon.position.set(0.34, 1.12, -0.34);
-    this.weapon.rotation.set(-0.04, 0, 0);
+    const sight = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.035, 0.06), metal);
+    sight.position.set(0, 0.215, -0.14);
+    this.weapon.add(sight);
+
+    // The starter character has no supplied weapon-hold animation clip.
+    // Keep the pistol at the character's right-hand position, facing forward.
+    this.weapon.position.set(0.32, 1.08, -0.39);
+    this.weapon.rotation.set(-0.06, 0, 0);
     this.muzzle = new THREE.Object3D();
-    this.muzzle.position.set(0, 0.02, -0.54);
+    this.muzzle.position.set(0, 0.055, -0.51);
     this.weapon.add(this.muzzle);
     this.muzzleFlash = new THREE.Mesh(
       new THREE.SphereGeometry(0.075, 8, 6),
@@ -49,6 +69,7 @@ export default class CombatSystem {
     this.muzzleFlash.position.copy(this.muzzle.position);
     this.muzzleFlash.visible = false;
     this.weapon.add(this.muzzleFlash);
+    this.weapon.visible = true;
     player.add(this.weapon);
   }
 
@@ -56,8 +77,38 @@ export default class CombatSystem {
     this.fireButton = document.getElementById('fire-btn');
     this.reloadButton = document.getElementById('reload-btn');
     this.ammoHud = document.getElementById('ammo-hud');
-    if (this.fireButton) this.fireButton.addEventListener('click', () => this.fire());
-    if (this.reloadButton) this.reloadButton.addEventListener('click', () => this.reload());
+    this.reticle = document.getElementById('aim-reticle');
+
+    if (this.fireButton) {
+      // Pointer events support touch, mouse and stylus without click-delay issues.
+      this.fireButton.addEventListener('pointerdown', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        this.firePointerId = event.pointerId;
+        try { this.fireButton.setPointerCapture(event.pointerId); } catch (_) {}
+        this.triggerHeld = true;
+        this.aiming = true;
+        this.fire();
+        this.fireButton.classList.add('pressed');
+      });
+      const releaseFire = (event) => {
+        if (this.firePointerId !== null && event.pointerId !== this.firePointerId) return;
+        this.firePointerId = null;
+        this.triggerHeld = false;
+        this.aiming = false;
+        this.fireButton.classList.remove('pressed');
+      };
+      ['pointerup', 'pointercancel', 'lostpointercapture'].forEach((type) => {
+        this.fireButton.addEventListener(type, releaseFire);
+      });
+    }
+    if (this.reloadButton) {
+      this.reloadButton.addEventListener('pointerdown', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        this.reload();
+      });
+    }
     this.renderHud();
   }
 
@@ -66,43 +117,78 @@ export default class CombatSystem {
     const input = this.game.inputManager;
     const setRunning = (active) => {
       if (input && input.keys) input.keys.sprint = active;
-      if (this.runButton) this.runButton.classList.toggle('running', active);
+      if (this.runButton) {
+        this.runButton.classList.toggle('running', active);
+        this.runButton.setAttribute('aria-pressed', active ? 'true' : 'false');
+      }
     };
-    if (this.runButton) {
-      this.runButton.addEventListener('pointerdown', (event) => {
-        event.preventDefault();
-        if (this.runButton.setPointerCapture && event.pointerId !== undefined) {
-          try { this.runButton.setPointerCapture(event.pointerId); } catch (_) {}
-        }
-        setRunning(true);
-      });
-      ['pointerup', 'pointercancel', 'lostpointercapture'].forEach((name) => {
-        this.runButton.addEventListener(name, () => setRunning(false));
-      });
-      window.addEventListener('pointerup', () => setRunning(false));
-      window.addEventListener('blur', () => setRunning(false));
-    }
+    this.setRunning = setRunning;
+
+    if (!this.runButton) return;
+    this.runButton.addEventListener('pointerdown', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      this.runPointerId = event.pointerId;
+      try { this.runButton.setPointerCapture(event.pointerId); } catch (_) {}
+      setRunning(true);
+    });
+    const releaseRun = (event) => {
+      // Do not let the joystick's second finger release the RUN button.
+      if (this.runPointerId === null || (event.pointerId !== undefined && event.pointerId !== this.runPointerId)) return;
+      this.runPointerId = null;
+      setRunning(false);
+    };
+    ['pointerup', 'pointercancel', 'lostpointercapture'].forEach((type) => {
+      this.runButton.addEventListener(type, releaseRun);
+    });
+    window.addEventListener('blur', () => {
+      this.runPointerId = null;
+      setRunning(false);
+      this.triggerHeld = false;
+      this.aiming = false;
+    });
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        this.runPointerId = null;
+        setRunning(false);
+        this.triggerHeld = false;
+        this.aiming = false;
+      }
+    });
   }
 
-  getAimTarget(player) {
+  isPlayerObject(object, player) {
+    let node = object;
+    while (node) {
+      if (node === player) return true;
+      node = node.parent;
+    }
+    return false;
+  }
+
+  getAimHit(player) {
     const camera = this.game.camera && this.game.camera.cameraInstance;
-    if (!camera) return player.position.clone().add(new THREE.Vector3(0, 1.3, -25).applyQuaternion(player.quaternion));
+    if (!camera) return null;
     camera.updateMatrixWorld(true);
     this.aimRaycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
     const hits = this.aimRaycaster.intersectObjects(this.scene.children, true);
-    for (const hit of hits) {
-      let node = hit.object;
-      let ownPlayer = false;
-      while (node) { if (node === player) { ownPlayer = true; break; } node = node.parent; }
-      if (!ownPlayer && hit.object !== this.muzzleFlash) return hit.point.clone();
-    }
+    return hits.find((hit) => !this.isPlayerObject(hit.object, player)) || null;
+  }
+
+  getAimTarget(player) {
+    const hit = this.getAimHit(player);
+    if (hit) return hit.point.clone();
+    const camera = this.game.camera.cameraInstance;
     const direction = new THREE.Vector3();
     camera.getWorldDirection(direction);
-    return this.aimRaycaster.ray.origin.clone().addScaledVector(direction, 65);
+    return camera.position.clone().addScaledVector(direction, 65);
   }
 
   renderHud() {
-    if (this.ammoHud) this.ammoHud.textContent = 'PISTOL  ' + this.ammo + ' / ' + this.reserveAmmo + (this.reloadTime > 0 ? '  RELOADING' : '');
+    if (this.ammoHud) {
+      this.ammoHud.textContent = 'PISTOL  ' + this.ammo + ' / ' + this.reserveAmmo +
+        (this.reloadTime > 0 ? '  RELOADING' : '');
+    }
   }
 
   reload() {
@@ -111,51 +197,70 @@ export default class CombatSystem {
     this.renderHud();
   }
 
-  fire() {
-    const world = this.game.world;
-    const player = world && world.player && world.player.player;
-    if (!player || !player.visible || (world.vehicle && world.vehicle.isDriving) || this.reloadTime > 0 || this.cooldown > 0) return;
-    if (this.ammo <= 0) { this.reload(); return; }
-
-    // Turn the character toward the point under the screen reticle.
-    const target = this.getAimTarget(player);
+  aimCharacterAtTarget(player, target) {
     const horizontal = target.clone().sub(player.position);
     horizontal.y = 0;
     if (horizontal.lengthSq() > 0.001) {
-      player.rotation.y = Math.atan2(-horizontal.x, -horizontal.z);
+      const desiredYaw = Math.atan2(-horizontal.x, -horizontal.z);
+      player.rotation.y = desiredYaw;
     }
-
+    // Keep the weapon aligned with the character's forward direction.
     player.updateMatrixWorld(true);
-    this.weapon.updateMatrixWorld(true);
+    if (this.weapon) this.weapon.updateMatrixWorld(true);
+  }
+
+  fire() {
+    const world = this.game.world;
+    const player = this.getPlayer();
+    if (!player || !player.visible || (world.vehicle && world.vehicle.isDriving) ||
+        this.reloadTime > 0 || this.cooldown > 0) return;
+    if (this.ammo <= 0) { this.reload(); return; }
+
+    const target = this.getAimTarget(player);
+    this.aimCharacterAtTarget(player, target);
     const origin = new THREE.Vector3();
     this.muzzle.getWorldPosition(origin);
     const direction = target.clone().sub(origin).normalize();
     this.raycaster.set(origin, direction);
     const hits = this.raycaster.intersectObjects(this.scene.children, true);
-    let end = origin.clone().addScaledVector(direction, 65);
-    for (const hit of hits) {
-      let node = hit.object;
-      let belongsToPlayer = false;
-      while (node) { if (node === player) { belongsToPlayer = true; break; } node = node.parent; }
-      if (!belongsToPlayer && hit.object !== this.muzzleFlash) { end = hit.point.clone(); break; }
-    }
+    const hit = hits.find((item) => !this.isPlayerObject(item.object, player));
+    const end = hit ? hit.point.clone() : origin.clone().addScaledVector(direction, 65);
 
     this.ammo -= 1;
     this.cooldown = 0.32;
     this.muzzleFlash.visible = true;
-    this.muzzleFlash.scale.setScalar(0.7 + Math.random() * 0.8);
-    this.flashTime = 0.07;
+    this.muzzleFlash.scale.setScalar(0.75 + Math.random() * 0.65);
+    this.flashTime = 0.075;
+
     const geometry = new THREE.BufferGeometry().setFromPoints([origin, end]);
     const material = new THREE.LineBasicMaterial({ color: 0xffd58a, transparent: true, opacity: 0.95 });
     const tracer = new THREE.Line(geometry, material);
     this.scene.add(tracer);
-    this.tracers.push({ line: tracer, life: 0.09 });
+    this.tracers.push({ line: tracer, life: 0.085 });
+
+    // Pedestrian hit detection is tied to the exact ray hit, not the camera ray.
+    if (hit && world.pedestrians && typeof world.pedestrians.damagePerson === 'function') {
+      let node = hit.object;
+      while (node && !node.userData.isPedestrianRoot) node = node.parent;
+      if (node) {
+        world.pedestrians.damagePerson(node, 34);
+        if (world.police && typeof world.police.commitCrime === 'function') world.police.commitCrime();
+      }
+    }
     this.renderHud();
   }
 
   update() {
     const dt = Math.min(this.game.time.delta || 0, 0.05);
     this.cooldown = Math.max(0, this.cooldown - dt);
+    if (this.aiming) {
+      const player = this.getPlayer();
+      if (player && this.game.world && !(this.game.world.vehicle && this.game.world.vehicle.isDriving)) {
+        this.aimCharacterAtTarget(player, this.getAimTarget(player));
+      }
+    }
+    if (this.triggerHeld && this.cooldown <= 0 && this.reloadTime <= 0) this.fire();
+
     if (this.flashTime > 0) {
       this.flashTime = Math.max(0, this.flashTime - dt);
       if (this.flashTime === 0 && this.muzzleFlash) this.muzzleFlash.visible = false;
@@ -163,8 +268,7 @@ export default class CombatSystem {
     if (this.reloadTime > 0) {
       this.reloadTime = Math.max(0, this.reloadTime - dt);
       if (this.reloadTime === 0) {
-        const needed = this.magazineSize - this.ammo;
-        const loaded = Math.min(needed, this.reserveAmmo);
+        const loaded = Math.min(this.magazineSize - this.ammo, this.reserveAmmo);
         this.ammo += loaded;
         this.reserveAmmo -= loaded;
       }
@@ -180,10 +284,12 @@ export default class CombatSystem {
       }
       return true;
     });
+
     const driving = this.game.world && this.game.world.vehicle && this.game.world.vehicle.isDriving;
     if (this.fireButton) this.fireButton.style.display = driving ? 'none' : 'block';
     if (this.reloadButton) this.reloadButton.style.display = driving ? 'none' : 'block';
     if (this.ammoHud) this.ammoHud.style.display = driving ? 'none' : 'block';
     if (this.runButton) this.runButton.style.display = driving ? 'none' : 'block';
+    if (driving && this.setRunning) this.setRunning(false);
   }
 }
