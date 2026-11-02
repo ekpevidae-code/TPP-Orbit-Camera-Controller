@@ -423,3 +423,27 @@ canvas#three {
   .wanted-level { top: 12px; font-size: 11px; }
   .crime-btn { right: 14px; bottom: 190px; padding: 11px 12px; }
 }
+
+
+/* Mobile weapon controls */
+.ammo-hud {
+  position: fixed; right: 18px; bottom: 270px; z-index: 140;
+  padding: 9px 12px; border-radius: 9px; color: #fff;
+  background: rgba(8,12,17,0.82); border: 1px solid rgba(255,255,255,0.22);
+  font-size: 11px; font-weight: 900; letter-spacing: 0.7px;
+  pointer-events: none;
+}
+.combat-btn {
+  position: fixed; z-index: 140; border-radius: 50%;
+  width: 64px; height: 64px; color: #fff; font-weight: 900;
+  border: 2px solid rgba(255,255,255,0.5);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4); touch-action: manipulation;
+}
+.fire-btn { right: 20px; bottom: 185px; background: rgba(142,35,28,0.94); }
+.reload-btn { right: 94px; bottom: 120px; width: 54px; height: 54px; background: rgba(30,49,65,0.94); font-size: 10px; }
+.combat-btn:active { transform: scale(0.94); }
+@media (max-width: 768px) {
+  .ammo-hud { right: 12px; bottom: 250px; }
+  .fire-btn { right: 12px; bottom: 174px; }
+  .reload-btn { right: 82px; bottom: 116px; }
+}
