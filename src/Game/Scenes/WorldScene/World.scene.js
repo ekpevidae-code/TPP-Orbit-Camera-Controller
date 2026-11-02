@@ -26,6 +26,7 @@ export default class World {
   }
 
   update() {
+    this.city.update();
     this.player.update();
     this.vehicle.update();
     this.traffic.update();
