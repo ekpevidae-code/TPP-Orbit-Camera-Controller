@@ -6,10 +6,31 @@ export default class UIController {
     this.inputManager = this.game.inputManager;
     
     this.initializeCameraToggle();
+    this.initializeLandscapeMode();
     this.initializeMobileControls();
     this.initializeVirtualJoystick();
     this.initializeKeyboardVisualFeedback();
     this.updateCameraModeButtons();
+  }
+
+  initializeLandscapeMode() {
+    const button = document.getElementById('rotate-screen-btn');
+    if (!button) return;
+    button.addEventListener('click', async () => {
+      try {
+        if (document.documentElement.requestFullscreen && !document.fullscreenElement) {
+          await document.documentElement.requestFullscreen();
+        }
+      } catch (_) {}
+      try {
+        if (screen.orientation && screen.orientation.lock) {
+          await screen.orientation.lock('landscape');
+        }
+      } catch (_) {
+        // Some mobile browsers do not allow orientation locking; manual rotation still works.
+      }
+      button.classList.add('attempted');
+    });
   }
 
   initializeCameraToggle() {
@@ -43,6 +64,7 @@ export default class UIController {
     
     // Track active touches for each button
     this.activeTouches = new Map();
+    this.joystickTouchId = null;
     
     this.controlButtons.forEach(button => {
       const key = button.dataset.key;
@@ -297,8 +319,9 @@ export default class UIController {
     
     this.joystickContainer.addEventListener('touchmove', (e) => {
       e.preventDefault();
-      if (this.joystickData.active) {
-        this.moveJoystick(e.touches[0]);
+      if (this.joystickData.active && this.joystickTouchId !== null) {
+        const touch = Array.from(e.touches).find((item) => item.identifier === this.joystickTouchId);
+        if (touch) this.moveJoystick(touch);
       }
     });
     
