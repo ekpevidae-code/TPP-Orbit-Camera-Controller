@@ -97,6 +97,7 @@ export default class Pedestrians {
     });
 
     this.group.add(root);
+    root.userData.isPedestrianRoot = true;
     const position = route.start + (route.end - route.start) * ((index % 4) / 4);
     if (route.axis === 'z') root.position.set(route.fixed, 0.08, position);
     else root.position.set(position, 0.08, route.fixed);
@@ -105,12 +106,33 @@ export default class Pedestrians {
       root, route, position, legs, arms,
       phase: index * 1.7,
       direction: Math.sign(route.speed),
+      health: 100,
+      dead: false,
+      hitFlash: 0,
     });
+  }
+
+  damagePerson(root, damage = 34) {
+    const person = this.people.find((entry) => entry.root === root);
+    if (!person || person.dead) return false;
+    person.health = Math.max(0, person.health - damage);
+    person.hitFlash = 0.18;
+    person.root.rotation.x = -0.12;
+    if (person.health <= 0) {
+      person.dead = true;
+      person.root.visible = false;
+    }
+    return true;
   }
 
   update() {
     const dt = Math.min(this.game.time.delta || 0.016, 0.05);
     this.people.forEach((person) => {
+      if (person.dead) return;
+      if (person.hitFlash > 0) {
+        person.hitFlash = Math.max(0, person.hitFlash - dt);
+        if (person.hitFlash === 0) person.root.rotation.x = 0;
+      }
       const { route } = person;
       const proposed = person.position + route.speed * dt;
       const nextPosition = route.axis === 'z'
