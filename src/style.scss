@@ -492,3 +492,39 @@ canvas#three {
 .aim-reticle span::after { width: 7px; height: 2px; right: 0; top: 10px; }
 .fire-btn.pressed { filter: brightness(1.35); transform: scale(.94); }
 .run-btn { touch-action: none !important; -webkit-user-select: none; user-select: none; }
+
+
+/* Landscape-first mobile gameplay layout */
+#rotate-screen-btn {
+  display: none;
+  position: fixed;
+  inset: auto 50% 22px auto;
+  transform: translateX(50%);
+  z-index: 2000;
+  padding: 14px 20px;
+  border: 1px solid rgba(255,255,255,.65);
+  border-radius: 12px;
+  color: #fff;
+  background: rgba(13,35,48,.96);
+  font-weight: 900;
+  letter-spacing: .8px;
+  box-shadow: 0 8px 28px rgba(0,0,0,.5);
+  touch-action: manipulation;
+}
+@media (orientation: portrait) and (max-width: 900px) {
+  #rotate-screen-btn { display: block; }
+  #mobile-controls, .run-btn, .fire-btn, .reload-btn, .vehicle-btn, .crime-btn {
+    opacity: .22;
+  }
+}
+@media (orientation: landscape) and (max-width: 900px) {
+  #rotate-screen-btn { display: none; }
+  #mobile-controls { left: 12px; right: auto; bottom: 12px; }
+  .run-btn { left: 126px; right: auto; bottom: 28px; }
+  .fire-btn { right: 16px; bottom: 24px; }
+  .reload-btn { right: 98px; bottom: 34px; }
+  .vehicle-btn { right: 18px; bottom: 112px; }
+  .crime-btn { right: 18px; bottom: 174px; }
+  .ammo-hud { right: 14px; top: 12px; }
+  .wanted-level { top: 12px; }
+}
