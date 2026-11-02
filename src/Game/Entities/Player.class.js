@@ -223,8 +223,24 @@ export default class Player {
     this.changeAnimation(newState);
 
     this.velocity.applyQuaternion(this.player.quaternion);
+    const previousPosition = this.player.position.clone();
     this.player.position.add(this.velocity);
     this.player.rotateY(angle);
+
+    const world = this.game.world;
+    let blocked = false;
+    if (world && world.vehicle && world.vehicle.car && !world.vehicle.isDriving) {
+      if (this.player.position.distanceTo(world.vehicle.car.position) < 2.0) blocked = true;
+    }
+    if (!blocked && world && world.pedestrians) {
+      for (const person of world.pedestrians.people) {
+        if (this.player.position.distanceTo(person.root.position) < 0.82) {
+          blocked = true;
+          break;
+        }
+      }
+    }
+    if (blocked) this.player.position.copy(previousPosition);
   }
 
   update() {
