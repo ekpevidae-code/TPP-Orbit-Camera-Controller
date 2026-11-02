@@ -447,3 +447,10 @@ canvas#three {
   .fire-btn { right: 12px; bottom: 174px; }
   .reload-btn { right: 82px; bottom: 116px; }
 }
+
+/* Improved mobile action HUD */
+.ammo-hud { right: 14px; top: 62px; bottom: auto; z-index: 1000; padding: 10px 13px; font-size: 12px; background: rgba(5,10,16,.92); border: 1px solid rgba(255,255,255,.4); }
+.combat-btn { z-index: 1001; pointer-events: auto; display: block; }
+.fire-btn { right: 16px; bottom: 88px; width: 76px; height: 76px; font-size: 13px; }
+.reload-btn { right: 104px; bottom: 100px; width: 62px; height: 62px; }
+@media (max-width: 768px) { .ammo-hud { right: 12px; top: 58px; bottom: auto; } .fire-btn { right: 14px; bottom: 88px; width: 72px; height: 72px; } .reload-btn { right: 96px; bottom: 100px; width: 58px; height: 58px; } }
