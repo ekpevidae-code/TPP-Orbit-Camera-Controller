@@ -461,3 +461,34 @@ canvas#three {
 /* Reliable touch handling for run and combat buttons */
 .run-btn, .combat-btn { pointer-events: auto !important; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; }
 .run-btn.running { filter: brightness(1.25); transform: scale(.96); }
+
+
+/* Third-person aiming reticle and reliable mobile action hit areas */
+.aim-reticle {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  width: 22px;
+  height: 22px;
+  transform: translate(-50%, -50%);
+  z-index: 999;
+  pointer-events: none;
+  opacity: .82;
+}
+.aim-reticle::before,
+.aim-reticle::after,
+.aim-reticle span::before,
+.aim-reticle span::after {
+  content: '';
+  position: absolute;
+  display: block;
+  background: rgba(255,255,255,.92);
+  border-radius: 2px;
+  box-shadow: 0 0 3px rgba(0,0,0,.9);
+}
+.aim-reticle::before { width: 2px; height: 7px; left: 10px; top: 0; }
+.aim-reticle::after { width: 2px; height: 7px; left: 10px; bottom: 0; }
+.aim-reticle span::before { width: 7px; height: 2px; left: 0; top: 10px; }
+.aim-reticle span::after { width: 7px; height: 2px; right: 0; top: 10px; }
+.fire-btn.pressed { filter: brightness(1.35); transform: scale(.94); }
+.run-btn { touch-action: none !important; -webkit-user-select: none; user-select: none; }
