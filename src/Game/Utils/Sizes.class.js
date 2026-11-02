@@ -1,6 +1,11 @@
 import EventEmitter from './EventEmitter.class';
 
 export default class Sizes extends EventEmitter {
+  getPixelRatioLimit() {
+    const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints || 0) > 0;
+    return isTouch ? 1.25 : 1.5;
+  }
+
   constructor() {
     super();
     /**
@@ -8,7 +13,7 @@ export default class Sizes extends EventEmitter {
      */
     this.width = window.innerWidth;
     this.height = window.innerHeight;
-    this.pixelRatio = Math.min(window.devicePixelRatio, 2);
+    this.pixelRatio = Math.min(window.devicePixelRatio, this.getPixelRatioLimit());
 
     let timeOut = null;
 
@@ -16,7 +21,7 @@ export default class Sizes extends EventEmitter {
       // Resize event
       this.width = window.innerWidth;
       this.height = window.innerHeight;
-      this.pixelRatio = Math.min(window.devicePixelRatio, 2);
+      this.pixelRatio = Math.min(window.devicePixelRatio, this.getPixelRatioLimit());
       this.trigger('resize');
 
       // Throttled resize
