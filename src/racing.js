@@ -231,13 +231,17 @@ const clock = new THREE.Clock();
 
 function resize() {
   arcadeFX.resize();
-  const w = canvas.clientWidth || innerWidth;
-  const h = canvas.clientHeight || innerHeight;
+  const w = Math.max(1, canvas.clientWidth || window.innerWidth);
+  const h = Math.max(1, canvas.clientHeight || window.innerHeight);
   camera.aspect = w / h;
+  camera.fov = Math.min(74, Math.max(58, 62 + (h / w - 1) * 7));
   camera.updateProjectionMatrix();
   renderer.setSize(w, h, false);
 }
-window.addEventListener('resize', resize);
+window.addEventListener('resize', resize, { passive: true });
+window.visualViewport?.addEventListener('resize', resize, { passive: true });
+const gameResizeObserver = new ResizeObserver(resize);
+gameResizeObserver.observe(document.querySelector('#game'));
 resize();
 
 let audioContext=null,engineOsc=null,engineGain=null,tireOsc=null,tireGain=null;
@@ -413,4 +417,4 @@ const gameLoop=new GameLoop(
   frameDt=>arcadeFX.render(frameDt,state.speed,Math.abs(state.drift)>0.08,state.nitroOn,state.shockwave>0)
 );
 gameLoop.start();
-window.addEventListener('pagehide',()=>{gameLoop.stop();unsubscribeState();hud.destroy();},{once:true});
+window.addEventListener('pagehide',()=>{gameLoop.stop();unsubscribeState();hud.destroy();gameResizeObserver.disconnect();},{once:true});
