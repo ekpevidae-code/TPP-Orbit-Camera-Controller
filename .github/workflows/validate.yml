@@ -1,0 +1,22 @@
+name: Velocity Run validation
+on:
+  push:
+    branches: [racing-prototype]
+  pull_request:
+    branches: [racing-prototype]
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/velocity_run?schema=public
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm install --no-audit --no-fund
+      - run: npx prisma validate
+      - run: npx prisma generate
+      - run: node --check server.js
+      - run: npm run build
