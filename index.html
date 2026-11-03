@@ -11,6 +11,19 @@
     <div id="progress"><div id="bar"></div></div>
     <button id="rotate-screen-btn" type="button">ROTATE TO LANDSCAPE</button>
 
+    <div id="mini-map-wrap" aria-label="Nearby radar">
+      <canvas id="mini-map" width="144" height="144"></canvas>
+      <span class="radar-label">CITY RADAR</span>
+    </div>
+    <button id="pause-btn" type="button" aria-label="Pause game">Ⅱ</button>
+    <div id="pause-menu" aria-hidden="true">
+      <div class="pause-card">
+        <div class="pause-kicker">OPEN WORLD</div>
+        <h2>PAUSED</h2>
+        <p>Your game is waiting.</p>
+        <button id="resume-btn" type="button">RESUME GAME</button>
+      </div>
+    </div>
     <!-- Camera Mode Toggle -->
     <div id="camera-controls">
       <div class="camera-mode-selector">
@@ -60,6 +73,9 @@
     <button id="crime-btn" class="crime-btn" type="button">COMMIT CRIME</button>
     <div id="aim-reticle" class="aim-reticle" aria-hidden="true"><span></span></div>
     <div id="ammo-hud" class="ammo-hud">PISTOL 12 / 60</div>
+    <button id="jump-btn" class="hud-action jump-btn" type="button">JUMP</button>
+    <button id="gas-btn" class="hud-action gas-btn" type="button">GAS</button>
+    <button id="brake-btn" class="hud-action brake-btn" type="button">BRAKE</button>
     <button id="fire-btn" class="combat-btn fire-btn" type="button">FIRE</button>
     <button id="reload-btn" class="combat-btn reload-btn" type="button">RELOAD</button>
     <button id="run-btn" class="run-btn" type="button">RUN</button>
