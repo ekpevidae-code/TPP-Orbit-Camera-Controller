@@ -60,6 +60,17 @@ The API health check is `GET /health`. The client uses `VITE_API_URL`; set it to
 
 The race result endpoint currently records client-submitted race data and must not be used as a trusted competitive leaderboard or reward authority until server-authoritative race sessions and anti-cheat validation are deployed.
 
+## Container deployment
+
+A Dockerfile is included for a persistent API host. Build the image from the repository root, configure the required environment variables, and run the database initialization commands once before sending traffic:
+
+```sh
+docker build -t velocity-run-api .
+docker run -p 4000:4000 --env-file .env velocity-run-api
+```
+
+Before the first API start, run `npx prisma db push` and `npm run db:seed` from the same image/container with the database environment configured. Keep the API service running separately from the Vercel static frontend.
+
 ## Important deployment boundary
 
 The repository contains the complete API source and database schema, but the API is not live until a PostgreSQL database and a persistent Node.js host are configured with the environment variables above. The current Vercel deployment serves the game frontend only. No database credentials or hosted database were present in the connected project, so none have been fabricated or committed.
