@@ -1,5 +1,5 @@
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "https://jgoygfnlvgognltxtfyf.supabase.co";
+const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || "sb_publishable_a584PmZ-2uU1T-nfMIdiiQ_xufAyAkn";
 const SESSION_KEY = "open-world-game-session-v1";
 
 export default class GameBackend {
@@ -14,13 +14,16 @@ export default class GameBackend {
   }
 
   storeSession(session) {
+    if (session?.access_token && !session.expires_at && session.expires_in) {
+      session.expires_at = Math.floor(Date.now() / 1000) + Number(session.expires_in);
+    }
     this.session = session;
     if (session) localStorage.setItem(SESSION_KEY, JSON.stringify(session));
     else localStorage.removeItem(SESSION_KEY);
   }
 
   async authRequest(path, body) {
-    if (!this.enabled) throw new Error("Game backend is not configured. Add the VITE_SUPABASE settings.");
+    if (!this.enabled) throw new Error("Game backend is not configured.");
     const response = await fetch(`${SUPABASE_URL}/auth/v1/${path}`, {
       method: "POST",
       headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY },
@@ -32,20 +35,19 @@ export default class GameBackend {
     return data;
   }
 
-  async signUp(email, password) {
+  signUp(email, password) {
     return this.authRequest("signup", { email, password });
   }
 
-  async signIn(email, password) {
+  signIn(email, password) {
     return this.authRequest("token?grant_type=password", { email, password });
   }
 
   async refreshSession() {
-    if (!this.session?.refresh_token) throw new Error("Please sign in again.");
-    const data = await this.authRequest("token?grant_type=refresh_token", {
+    if (!this.session?.refresh_token) throw new Error("Your session expired. Please sign in again.");
+    return this.authRequest("token?grant_type=refresh_token", {
       refresh_token: this.session.refresh_token,
     });
-    return data;
   }
 
   async ensureSession() {
@@ -75,17 +77,18 @@ export default class GameBackend {
   bootstrap(displayName = "Player") {
     return this.gameRequest({ action: "bootstrap", display_name: displayName });
   }
-
-  load() {
-    return this.gameRequest({ action: "load" });
-  }
-
+  load() { return this.gameRequest({ action: "load" }); }
   save(checkpoint, playtimeSeconds = 0) {
-    return this.gameRequest({
-      action: "save",
-      checkpoint,
-      playtime_seconds: playtimeSeconds,
-    });
+    return this.gameRequest({ action: "save", checkpoint, playtime_seconds: playtimeSeconds });
+  }
+  addInventoryItem(itemCode, quantity = 1, actionId = crypto.randomUUID()) {
+    return this.gameRequest({ action: "inventory_pickup", item_code: itemCode, quantity, action_id: actionId });
+  }
+  startMission(missionCode, actionId = crypto.randomUUID()) {
+    return this.gameRequest({ action: "mission_start", mission_code: missionCode, action_id: actionId });
+  }
+  completeMission(missionCode, actionId = crypto.randomUUID()) {
+    return this.gameRequest({ action: "mission_complete", mission_code: missionCode, action_id: actionId });
   }
 
   signOut() {
