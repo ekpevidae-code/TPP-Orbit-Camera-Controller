@@ -1,35 +1,49 @@
-# Game backend foundation
+# Open-world game systems and backend wiring
 
-This repository now has a separate Supabase backend for the open-world game.
+## Backend project
+- Supabase project: tpp-open-world-game-backend
+- Project reference: jgoygfnlvgognltxtfyf
+- Region: eu-west-1 (Ireland)
+- Edge Function: game-session (JWT verification enabled)
 
-## Project
-- Supabase project: `tpp-open-world-game-backend`
-- Region: `eu-west-1` (Ireland)
-- API URL: `https://jgoygfnlvgognltxtfyf.supabase.co`
-- Edge Function: `/functions/v1/game-session`
+## Connected game architecture
+- The browser game owns per-frame movement, camera, animation, collisions, traffic and police simulation.
+- Supabase owns durable identity, cloud checkpoint, wallet, inventory, vehicle ownership, mission progress, item/vehicle catalogues and transaction history.
+- The game session controller signs players in, bootstraps a player profile, loads cloud state, restores checkpoint position/vehicle/ammunition, and saves checkpoints periodically.
+- No per-frame movement or physics data is sent to the database.
 
-## Client configuration
-Copy `.env.example` to `.env` for local development. The publishable key is intended for client use; never put a service-role key in the browser or commit it to GitHub.
+## Relational model
+- auth.users → player_profiles, player_saves, player_wallets, player_stats, player_inventory, player_vehicles, player_missions, wallet_transactions, game_action_receipts
+- item_definitions → player_inventory.item_code
+- vehicle_definitions → player_vehicles.vehicle_code
+- mission_definitions → player_missions.mission_code
+- wallet_transactions records each money change and has a unique per-player event key.
+- game_action_receipts provides idempotency keys so retried pickups or mission actions do not apply twice.
 
-## Current database systems
-- Player profiles
-- Three-slot-ready cloud save structure (slot 1 currently used by the session endpoint)
-- Player wallet
-- Player inventory
-- Player-owned vehicles
-- Mission definitions
-- Per-player mission progress
+## Server-authoritative transactions
+The Edge Function validates the Supabase Auth token and derives the player ID from the verified user, never from request JSON. It calls restricted Postgres functions for:
+- Inventory pickup (game_add_inventory_item)
+- Mission start (game_start_mission)
+- Mission completion and reward payout (game_complete_mission)
 
-All tables have Row Level Security enabled. Players can read only their own private game data. Wallet, inventory, vehicle ownership, and mission progress are not writable directly by the browser.
+Mission completion changes mission status, updates the wallet and writes the wallet ledger in one database transaction. The functions are executable only by service_role; the browser cannot call them directly.
 
-## Edge Function actions
-All requests require a valid Supabase Auth access token.
-- `bootstrap`: create the player's profile, wallet, and initial save row.
-- `load`: load profile, save, wallet, inventory, vehicles, and mission progress.
-- `save`: save a bounded JSON checkpoint. Economy and ownership fields are rejected.
+## Client integration
+- Account panel: sign in / create account / sign out
+- Guest play remains available
+- Cloud state is restored on successful sign-in
+- Cloud checkpoint is saved every 45 seconds while connected, plus a manual save control
+- Save payload rejects protected economy, health and ownership fields
 
-## Important gameplay architecture
-Do not send per-frame movement, camera, physics, vehicle simulation, or collision updates to Supabase. Keep those systems inside the Three.js game loop. Use the backend for sign-in, cloud saves, mission state, inventory, wallet, and durable player progression. A true shared multiplayer world needs a dedicated authoritative real-time game server; Supabase Realtime is not a substitute for a high-frequency physics server.
+## Verification status
+- Database schema: created and inspected
+- Foreign keys: verified in database metadata
+- Row Level Security: enabled on all game tables
+- Security advisor: no remaining security findings after deny policy added for action receipts
+- Edge Function: deployed; latest version 5, JWT verification enabled
+- Game source: client adapter and session controller committed
+- Automated production build workflow: added; wait for its run result before claiming build success
+- End-to-end sign-up, cloud restore/save, inventory pickup and mission reward tests still need a real test account and in-game mission/pickup triggers
 
-## Not yet complete
-The backend project, schema, security policies, and session Edge Function are deployed. The game client adapter is committed, but the account UI, automatic sign-in/bootstrap, live save/load wiring to the actual player/world state, economy/mission command validation, and a full build/runtime test still need implementation. Do not describe the game as fully online or multiplayer-ready yet.
+## Not a high-frequency multiplayer server
+This is a persistent-player backend, not a dedicated authoritative 3D simulation server. A shared real-time open world needs a separate game server with client prediction/interpolation, server authority and replication. Supabase should not receive character or vehicle transforms every frame.
