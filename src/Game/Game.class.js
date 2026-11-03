@@ -125,9 +125,9 @@ export default class Game {
       }
     });
 
-    this.camera.controls.dispose();
+    this.camera.controls?.dispose?.();
     this.renderer.rendererInstance.dispose();
-    this.debug.gui.destroy();
+    this.debug?.gui?.destroy?.();
 
     this.canvas = null;
     this.scene = null;
