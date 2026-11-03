@@ -59,6 +59,10 @@ export default class GameSessionController {
     this.emailInput = panel.querySelector(".game-account-email");
     this.passwordInput = panel.querySelector(".game-account-password");
     this.connectedActions = panel.querySelector(".game-account-connected");
+    this.walletNode = document.createElement("div");
+    this.walletNode.id = "wallet-hud";
+    this.walletNode.hidden = true;
+    document.body.appendChild(this.walletNode);
 
     panel.querySelector(".game-account-head").addEventListener("click", () => panel.classList.toggle("collapsed"));
     panel.querySelector(".game-account-close").addEventListener("click", (event) => { event.stopPropagation(); panel.classList.add("collapsed"); });
@@ -148,6 +152,7 @@ export default class GameSessionController {
     this.game.world?.missions?.applyPlayerMissions(state.missions || [], state.mission_definitions || []);
     this.playtimeSeconds = Math.max(0, Number(state.save?.playtime_seconds || 0));
     this.connected = true;
+    this.renderWallet(state.wallet);
     this.form.hidden = true;
     this.connectedActions.hidden = false;
     this.panel.classList.add("connected", "collapsed");
@@ -174,6 +179,11 @@ export default class GameSessionController {
       vehicle.updatePrompt();
     }
 
+    if (vehicle) {
+      vehicle.isOwned = (state.vehicles || []).some((entry) => entry.vehicle_code === vehicle.vehicleCode);
+      vehicle.car.visible = vehicle.isOwned;
+      vehicle.updatePrompt();
+    }
     const combat = this.game.world?.combat;
     if (combat) {
       if (Number.isInteger(checkpoint.ammo)) combat.ammo = Math.max(0, Math.min(combat.magazineSize, checkpoint.ammo));
@@ -185,6 +195,12 @@ export default class GameSessionController {
       this.game.world.police.wantedLevel = Math.max(0, Math.min(5, wanted));
       this.game.world.police.renderWanted();
     }
+  }
+
+  renderWallet(wallet = {}) {
+    if (!this.walletNode) return;
+    this.walletNode.hidden = false;
+    this.walletNode.textContent = "CASH  $" + Number(wallet.cash || 0).toLocaleString();
   }
 
   buildCheckpoint() {
@@ -230,5 +246,6 @@ export default class GameSessionController {
   destroy() {
     if (this.saveTimer) window.clearInterval(this.saveTimer);
     this.panel?.remove();
+    this.walletNode?.remove();
   }
 }
