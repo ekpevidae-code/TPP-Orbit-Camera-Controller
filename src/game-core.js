@@ -21,10 +21,11 @@ export class VehiclePhysicsEngine{
  setStats(s={}){this.stats={topSpeed:s.topSpeed??54,acceleration:s.acceleration??26,handling:s.handling??5.5,nitro:s.nitro??100};}
  step(car,input,dt,{nitroMultiplier=1,shockwave=false,airborne=false}={}){
   const speed=car.speed??0,gas=input.gas?1:0,brake=input.brake?1:0,steer=THREE.MathUtils.clamp(input.steer??0,-1,1);
-  const power=this.stats.acceleration*(0.68+0.32*Math.min(1,speed/this.stats.topSpeed));
-  const drag=0.014*speed+0.00034*speed*speed;
-  const targetCap=this.stats.topSpeed*(shockwave?1.85:nitroMultiplier);
-  const acceleration=gas*power-brake*42-drag-(gas?0:4.2);
+  const power=this.stats.acceleration*(0.82+0.38*Math.min(1,speed/this.stats.topSpeed));
+  const drag=0.010*speed+0.00025*speed*speed;
+  const boost=shockwave?1.9:Math.max(1,nitroMultiplier);
+  const targetCap=this.stats.topSpeed*boost;
+  const acceleration=gas*power*boost+(gas&&boost>1?10*(boost-1):0)-brake*48-drag-(gas?0:3.2);
   car.speed=THREE.MathUtils.clamp(speed+acceleration*dt,0,targetCap);
   const drifting=!!(brake&&Math.abs(steer)>0.15&&speed>12&&!airborne);
   const lateralGrip=drifting?1.1:5.8+this.stats.handling*0.42;
@@ -37,12 +38,12 @@ export class NitroController{
  constructor(capacity=100){this.capacity=capacity;this.value=capacity;this.mode='READY';this.lastTap=-Infinity;this.shockwaveTime=0;this.perfectTime=0;}
  add(amount){this.value=THREE.MathUtils.clamp(this.value+amount,0,this.capacity);}
  tap(now,active){const gap=now-this.lastTap;let result='STANDARD';
-  if(this.value===this.capacity&&gap<0.36){this.value=0;this.mode='SHOCKWAVE';this.shockwaveTime=3.1;result='SHOCKWAVE';}
-  else if(this.value>=68&&this.value<=90&&gap<0.42){this.value=Math.max(0,this.value-34);this.mode='PERFECT';this.perfectTime=1.7;result='PERFECT';}
+  if(this.value===this.capacity&&gap<0.36){this.value=0;this.mode='SHOCKWAVE';this.shockwaveTime=3.6;result='SHOCKWAVE';}
+  else if(this.value>=68&&this.value<=90&&gap<0.42){this.value=Math.max(0,this.value-30);this.mode='PERFECT';this.perfectTime=2.0;result='PERFECT';}
   else if(this.value>0){this.mode='STANDARD';result='STANDARD';}
   this.lastTap=now;return result;
  }
- step(dt,using){if(using)this.value=Math.max(0,this.value-(this.mode==='PERFECT'?19:28)*dt);if(this.shockwaveTime>0)this.shockwaveTime=Math.max(0,this.shockwaveTime-dt);if(this.perfectTime>0)this.perfectTime=Math.max(0,this.perfectTime-dt);if(!this.shockwaveTime&&!this.perfectTime&&this.value<=0)this.mode='EMPTY';return {value:this.value,shockwave:this.shockwaveTime>0,perfect:this.perfectTime>0};}
+ step(dt,using){if(using)this.value=Math.max(0,this.value-(this.mode==='PERFECT'?18:23)*dt);if(this.shockwaveTime>0)this.shockwaveTime=Math.max(0,this.shockwaveTime-dt);if(this.perfectTime>0)this.perfectTime=Math.max(0,this.perfectTime-dt);if(!this.shockwaveTime&&!this.perfectTime&&this.value<=0)this.mode='EMPTY';return {value:this.value,shockwave:this.shockwaveTime>0,perfect:this.perfectTime>0};}
 }
 export class AABBCollisionSystem{
  constructor(){this.playerBox=new THREE.Box3();this.otherBox=new THREE.Box3();this.playerSize=new THREE.Vector3(2.2,1.5,4.2);this.otherSize=new THREE.Vector3(2.1,1.5,4.0);}
