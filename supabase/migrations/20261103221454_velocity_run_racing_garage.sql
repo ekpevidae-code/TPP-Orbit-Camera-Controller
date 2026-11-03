@@ -106,7 +106,7 @@ declare
 begin
  perform public.race_ensure_player();
  if p_action_key is null or p_car_model_id is null then raise exception 'Purchase request is incomplete'; end if;
- perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(v_user_id::text||':'||p_action_key::text,0));
+
  v_payload:=jsonb_build_object('carModelId',p_car_model_id);
  select * into v_receipt from public.race_action_receipts where user_id=v_user_id and action_key=p_action_key;
  if found then
@@ -141,7 +141,7 @@ declare
 begin
  perform public.race_ensure_player();
  if p_action_key is null or p_player_car_id is null or p_stat not in('topSpeed','acceleration','handling','nitro') then raise exception 'Invalid upgrade request'; end if;
- perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(v_user_id::text||':'||p_action_key::text,0));
+
  v_payload:=jsonb_build_object('playerCarId',p_player_car_id,'stat',p_stat);
  select * into v_receipt from public.race_action_receipts where user_id=v_user_id and action_key=p_action_key;
  if found then
