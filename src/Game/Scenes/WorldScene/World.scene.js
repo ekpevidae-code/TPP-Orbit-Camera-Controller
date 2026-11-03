@@ -9,6 +9,7 @@ import Pedestrians from './components/Pedestrians/Pedestrians.class';
 import PoliceSystem from './components/Police/PoliceSystem.class';
 import CombatSystem from './components/Combat/CombatSystem.class';
 import MissionSystem from '../../Systems/MissionSystem.class';
+import PickupSystem from '../../Systems/PickupSystem.class';
 import * as THREE from 'three';
 
 export default class World {
@@ -28,6 +29,7 @@ export default class World {
     this.police = new PoliceSystem();
     this.combat = new CombatSystem();
     this.missions = new MissionSystem();
+    this.pickups = new PickupSystem();
     this.lighting = new Lighting({ helperEnabled: false });
   }
 
@@ -40,6 +42,7 @@ export default class World {
     this.police.update();
     this.combat.update();
     this.missions.update();
+    this.pickups.update();
     this.lighting.update();
   }
 }
