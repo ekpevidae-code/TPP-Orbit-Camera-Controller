@@ -142,6 +142,7 @@ export default class MissionSystem {
         mission.mission_code === this.code ? { ...mission, status: "completed" } : mission
       );
       this.game.playerCloudState = cloud;
+      this.game.sessionController.renderWallet(cloud.wallet);
       this.render();
       this.setMessage("Mission complete · +$" + Number(result.reward_cash || 0).toLocaleString());
     } catch (error) {
