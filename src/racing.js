@@ -279,7 +279,7 @@ const nitroButton=document.querySelector('#nitro');
 nitroButton.addEventListener('pointerdown',e=>{const result=nitroSystem.tap(performance.now()/1000,state.running);state.nitro=nitroSystem.value;if(result==='SHOCKWAVE'){state.shockwave=3.1;arcadeFX.sparks();ui.nitroLabel.textContent='SHOCKWAVE';}else if(result==='PERFECT'){state.perfect=1.7;ui.nitroLabel.textContent='PERFECT';}else ui.nitroLabel.textContent='NITRO';});
 document.querySelector('#stunt')?.addEventListener('pointerdown',()=>{if(state.airborne>0){state.stuntSpinRate=state.stuntSpinRate||Math.PI*5;state.stuntDone=true;}});
 document.querySelector('#garage-start')?.addEventListener('click',startRace);
-function renderGarageStats(){const v=VEHICLES[state.selectedCar];const stats={topSpeed:v.topSpeed,acceleration:v.acceleration,handling:v.handling*10,nitro:v.nitro};for(const [key,value] of Object.entries(stats)){const el=document.querySelector('[data-stat="'+key+'"]');if(el){el.querySelector('strong').textContent=Math.round(value);el.querySelector('i b').style.width=Math.min(100,value/(key==='topSpeed'?70:key==='acceleration'?40:key==='handling'?75:120)*100)+'%';}}}
+function renderGarageStats(){const v=VEHICLES[state.selectedCar];const stats={topSpeed:v.topSpeed+state.upgrades[0]*2.2,acceleration:v.acceleration+state.upgrades[1]*2.4,handling:(v.handling+state.upgrades[2]*0.45)*10,nitro:v.nitro+state.upgrades[3]*8};for(const [key,value] of Object.entries(stats)){const el=document.querySelector('[data-stat="'+key+'"]');if(el){el.querySelector('strong').textContent=Math.round(value);el.querySelector('i b').style.width=Math.min(100,value/(key==='topSpeed'?70:key==='acceleration'?40:key==='handling'?75:120)*100)+'%';}}}
 document.querySelectorAll('[data-car]').forEach(btn=>btn.addEventListener('click',()=>{state.selectedCar=Number(btn.dataset.car);const colors=[0xf04d25,0x20a8d8,0xd6dce4];vehiclePhysics.setStats(VEHICLES[state.selectedCar]);nitroSystem.capacity=VEHICLES[state.selectedCar].nitro;nitroSystem.value=nitroSystem.capacity;player.traverse(o=>{if(o.isMesh&&o.material?.metalness>0.5&&o.material.color) o.material.color.setHex(colors[state.selectedCar]);});document.querySelectorAll('[data-car]').forEach(b=>b.classList.toggle('selected',b===btn));renderGarageStats();}));
 renderGarageStats();
 document.querySelectorAll('[data-upgrade]').forEach(btn=>btn.addEventListener('click',()=>{const i=Number(btn.dataset.upgrade);state.upgrades[i]=Math.min(3,state.upgrades[i]+1);btn.querySelector('b').textContent='+'+state.upgrades[i];const base=VEHICLES[state.selectedCar];vehiclePhysics.setStats({topSpeed:base.topSpeed+state.upgrades[0]*2.2,acceleration:base.acceleration+state.upgrades[1]*2.4,handling:base.handling+state.upgrades[2]*0.45,nitro:base.nitro+state.upgrades[3]*8});nitroSystem.capacity=vehiclePhysics.stats.nitro;nitroSystem.value=nitroSystem.capacity;renderGarageStats();}));
@@ -288,7 +288,7 @@ document.querySelector('#pause').addEventListener('click', () => setPause(!state
 document.querySelector('#resume').addEventListener('click', () => setPause(false));
 document.querySelector('#restart').addEventListener('click', resetRace);
 document.querySelector('#again').addEventListener('click', resetRace);
-document.querySelector('#nitro').addEventListener('pointerdown', () => startRace());
+
 window.addEventListener('keydown', e => {
   if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key)) e.preventDefault();
   if (e.key === 'ArrowUp' || e.key.toLowerCase() === 'w') { state.gas = true; startRace(); }
