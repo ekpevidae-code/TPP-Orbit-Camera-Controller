@@ -94,7 +94,7 @@ app.post('/api/garage/purchase', requireAuth, asyncRoute(async (req, res) => {
     const prior = await tx.economyLedger.findUnique({ where: { userId_idempotencyKey: { userId: req.userId, idempotencyKey: key } } });
     if (prior) {
       const owned = await tx.playerCar.findFirst({ where: { userId: req.userId, carModelId: input.carModelId }, include: { carModel: true } });
-      if (!owned || prior.kind !== 'PURCHASE') throw Object.assign(new Error('Idempotency key was already used for another operation'), { status: 409 });
+      if (!owned || prior.kind !== 'PURCHASE' || prior.metadata?.carModelId !== input.carModelId) throw Object.assign(new Error('Idempotency key was already used for another operation'), { status: 409 });
       return { playerCar: owned, balance: prior.balanceAfter, replayed: true };
     }
     const model = await tx.carModel.findUnique({ where: { id: input.carModelId } });
