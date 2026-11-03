@@ -88,7 +88,7 @@ app.get('/api/garage', requireAuth, asyncRoute(async (req, res) => {
 }));
 
 app.post('/api/garage/purchase', requireAuth, asyncRoute(async (req, res) => {
-  const input = purchaseSchema.parse(req.body);
+  const input = purchaseSchema.parse({ ...req.body, idempotencyKey: req.get('Idempotency-Key') || req.body?.idempotencyKey });
   const key = input.idempotencyKey || randomUUID();
   const result = await serializable(async tx => {
     const prior = await tx.economyLedger.findUnique({ where: { userId_idempotencyKey: { userId: req.userId, idempotencyKey: key } } });
@@ -112,7 +112,7 @@ app.post('/api/garage/purchase', requireAuth, asyncRoute(async (req, res) => {
 }));
 
 app.post('/api/garage/upgrade', requireAuth, asyncRoute(async (req, res) => {
-  const input = upgradeSchema.parse(req.body);
+  const input = upgradeSchema.parse({ ...req.body, idempotencyKey: req.get('Idempotency-Key') || req.body?.idempotencyKey });
   const key = input.idempotencyKey || randomUUID();
   const result = await serializable(async tx => {
     const prior = await tx.economyLedger.findUnique({ where: { userId_idempotencyKey: { userId: req.userId, idempotencyKey: key } } });
