@@ -279,7 +279,7 @@ nitroButton.addEventListener('pointerdown',e=>{const result=nitroSystem.tap(perf
 document.querySelector('#stunt')?.addEventListener('pointerdown',()=>{if(state.airborne>0){state.stuntSpinRate=state.stuntSpinRate||Math.PI*5;state.stuntDone=true;}});
 document.querySelector('#garage-start')?.addEventListener('click',startRace);
 document.querySelectorAll('[data-car]').forEach(btn=>btn.addEventListener('click',()=>{state.selectedCar=Number(btn.dataset.car);const colors=[0xf04d25,0x20a8d8,0xd6dce4];vehiclePhysics.setStats(VEHICLES[state.selectedCar]);nitroSystem.capacity=VEHICLES[state.selectedCar].nitro;nitroSystem.value=nitroSystem.capacity;player.traverse(o=>{if(o.isMesh&&o.material?.metalness>0.5&&o.material.color) o.material.color.setHex(colors[state.selectedCar]);});document.querySelectorAll('[data-car]').forEach(b=>b.classList.toggle('selected',b===btn));}));
-document.querySelectorAll('[data-upgrade]').forEach(btn=>btn.addEventListener('click',()=>{const i=Number(btn.dataset.upgrade);state.upgrades[i]=Math.min(3,state.upgrades[i]+1);btn.querySelector('b').textContent='+'+state.upgrades[i];}));
+document.querySelectorAll('[data-upgrade]').forEach(btn=>btn.addEventListener('click',()=>{const i=Number(btn.dataset.upgrade);state.upgrades[i]=Math.min(3,state.upgrades[i]+1);btn.querySelector('b').textContent='+'+state.upgrades[i];const base=VEHICLES[state.selectedCar];vehiclePhysics.setStats({topSpeed:base.topSpeed+state.upgrades[0]*2.2,acceleration:base.acceleration+state.upgrades[1]*2.4,handling:base.handling+state.upgrades[2]*0.45,nitro:base.nitro+state.upgrades[3]*8});nitroSystem.capacity=vehiclePhysics.stats.nitro;nitroSystem.value=nitroSystem.capacity;}));
 
 document.querySelector('#pause').addEventListener('click', () => setPause(!state.paused));
 document.querySelector('#resume').addEventListener('click', () => setPause(false));
@@ -330,7 +330,7 @@ function animate(dtOverride) {
       state.driftToastTime = Math.max(0, state.driftToastTime - dt);
       if (!state.driftToastTime) ui.driftToast.classList.remove('show');
     }
-    player.position.x+=(physics.lateral*0.22*speedFactor+state.drift*3.4)*dt;player.position.x=clamp(player.position.x,-7.4,7.4);if(collisions.guardrail(player.position.x)){player.position.x=clamp(player.position.x,-7.4,7.4);player.speed*=0.82;state.speed=player.speed;}
+    player.position.x+=(physics.lateral*0.22*speedFactor+state.drift*3.4)*dt;if(collisions.guardrail(player.position.x,7.7)){player.position.x=clamp(player.position.x,-7.2,7.2);player.speed*=0.82;state.speed=player.speed;}
     player.position.z -= state.speed * dt * 0.34;
     if(state.airborne>0){state.airborne=Math.max(0,state.airborne-dt);state.stuntSpin+=state.stuntSpinRate*dt;player.position.y=0.8+Math.sin((1.1-state.airborne)/1.1*Math.PI)*2.5;state.stuntRoll+=state.steer*dt*4.2;if(state.airborne===0){player.position.y=0;if(state.stuntDone){nitroSystem.add(28);state.nitro=nitroSystem.value;state.driftScore+=500;ui.nitroLabel.textContent='LANDING +NITRO';}state.stuntDone=false;state.stuntSpin=0;state.stuntSpinRate=0;}}
     const stuntAt=[0.42,1.18,2.05];if(state.rampIndex<stuntAt.length&&state.distance>=stuntAt[state.rampIndex]){state.airborne=1.1;state.stuntDone=false;state.stuntRoll=0;state.stuntSpin=0;state.stuntSpinRate=0;state.rampIndex++;arcadeFX.sparks();}
@@ -342,7 +342,7 @@ function animate(dtOverride) {
     state.nearMissCooldown=Math.max(0,state.nearMissCooldown-dt);
     traffic.forEach((t,i)=>{t.car.position.z+=state.speed*dt*0.34-(t.speed*11*dt);if(t.car.position.z>13)t.car.position.z=-260-Math.random()*160;t.car.position.x=t.x+Math.sin(clock.elapsedTime*0.22+i)*0.28;const gap=Math.abs(t.car.position.z-player.position.z);const laneGap=Math.abs(t.car.position.x-player.position.x);if(gap<3.2&&laneGap<2.3&&laneGap>1.15&&state.nearMissCooldown===0){nitroSystem.add(12);state.nitro=nitroSystem.value;state.nearMissCooldown=1.2;arcadeFX.sparks();ui.nitroLabel.textContent='NEAR MISS +';}});
 
-    const collision=collisions.hit(player,traffic.map(t=>t.car));if(collision&&!nitroState.shockwave&&crashTime<=0){player.speed*=0.55;state.speed=player.speed;crashTime=0.8;ui.nitroLabel.textContent='CRASH!';}crashTime=Math.max(0,crashTime-dt);\n    const collision=collisions.hit(player,traffic.map(t=>t.car));if(collision&&!nitroState.shockwave&&crashTime<=0){player.speed*=0.55;state.speed=player.speed;crashTime=0.8;ui.nitroLabel.textContent='CRASH!';}crashTime=Math.max(0,crashTime-dt);
+    const collision=collisions.hit(player,traffic.map(t=>t.car));if(collision&&!nitroState.shockwave&&crashTime<=0){player.speed*=0.55;state.speed=player.speed;crashTime=0.8;ui.nitroLabel.textContent='CRASH!';}crashTime=Math.max(0,crashTime-dt);
     camera.fov=THREE.MathUtils.damp(camera.fov,66+Math.max(0,state.speed-25)*0.42+(usingNitro?8:0),4,dt);camera.updateProjectionMatrix();
     const targetCam = new THREE.Vector3(player.position.x * 0.48, 5.4 + state.speed * 0.018, player.position.z + 10.5+state.speed*0.035);
     camera.position.lerp(targetCam, 1 - Math.pow(0.001, dt));
@@ -358,7 +358,7 @@ function animate(dtOverride) {
     const suffix = place === 1 ? 'ST' : place === 2 ? 'ND' : place === 3 ? 'RD' : 'TH';
     document.querySelector('#position').innerHTML = place + '<span>' + suffix + '</span>';
     if (state.distance >= totalDistance) {
-      state.finished=true;state.running=false;state.speed=0;gameStates.transition(GAME_STATES.GAME_OVER);gameStates.transition(GAME_STATES.GAME_OVER);
+      state.finished=true;state.running=false;state.speed=0;gameStates.transition(GAME_STATES.GAME_OVER);
       ui.finishTitle.textContent = 'FINISH!';
       ui.finishCopy.textContent = 'You completed the 3 km sprint. Run it again and beat your time.';
       ui.finish.classList.remove('hidden');
