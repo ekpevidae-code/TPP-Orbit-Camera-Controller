@@ -236,6 +236,13 @@ export default class GameSessionController {
     if (this.connected) await this.saveNow(true);
     this.backend.signOut();
     this.connected = false;
+    if (this.walletNode) this.walletNode.hidden = true;
+    const vehicle = this.game.world?.vehicle;
+    if (vehicle) {
+      vehicle.isOwned = true;
+      vehicle.car.visible = true;
+      vehicle.updatePrompt();
+    }
     this.form.hidden = false;
     this.connectedActions.hidden = true;
     this.panel.classList.remove("connected");
