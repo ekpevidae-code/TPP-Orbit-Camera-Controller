@@ -223,7 +223,10 @@ function resize() {
 window.addEventListener('resize', resize);
 resize();
 
+let audioContext=null,engineOsc=null,engineGain=null,tireOsc=null,tireGain=null;
+function initAudio(){if(audioContext)return;const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;audioContext=new AC();engineOsc=audioContext.createOscillator();engineGain=audioContext.createGain();engineOsc.type='sawtooth';engineOsc.frequency.value=55;engineGain.gain.value=0.0001;engineOsc.connect(engineGain).connect(audioContext.destination);engineOsc.start();tireOsc=audioContext.createOscillator();tireGain=audioContext.createGain();tireOsc.type='triangle';tireOsc.frequency.value=420;tireGain.gain.value=0.0001;tireOsc.connect(tireGain).connect(audioContext.destination);tireOsc.start();}
 function startRace() {
+  initAudio();if(audioContext?.state==='suspended')audioContext.resume();
   ui.garage?.classList.add('hidden');
   if (state.finished) resetRace();
   state.running = true;
@@ -298,16 +301,18 @@ function animate() {
   requestAnimationFrame(animate);
   const dt = Math.min(clock.getDelta(), 0.04);
   if (state.running && !state.paused && !state.finished) {
-    const accel = state.gas ? 26 : 0;
+    const accel = state.gas ? 26 + state.upgrades[1]*2.2 : 0;
     const braking = state.brake ? 48 : 0;
     const usingNitro = state.nitroOn && state.nitro > 0 && state.speed > 12;
-    const maxSpeed = state.shockwave>0?96:(usingNitro ? 76 : 54);
+    const maxSpeed = state.shockwave>0?96:(usingNitro ? 76 + state.upgrades[0]*2 : 54 + state.upgrades[0]*2);
     state.speed += (accel - braking - (state.gas ? 0 : 5.5)) * dt;
-    if (usingNitro) { state.speed = Math.min(maxSpeed, state.speed + 22 * dt); state.nitro = Math.max(0, state.nitro - 29 * dt); }
+    if (usingNitro) { state.speed = Math.min(maxSpeed, state.speed + 22 * dt); state.nitro = Math.max(0, state.nitro - Math.max(17,29-state.upgrades[3]*3) * dt); }
     else state.nitro = Math.min(100, state.nitro + 5 * dt);
+    if(state.shockwave>0){state.shockwave=Math.max(0,state.shockwave-dt);state.speed=Math.min(96,state.speed+12*dt);if(state.shockwave===0)ui.nitroLabel.textContent='NITRO';}
+    if(state.perfect>0)state.perfect=Math.max(0,state.perfect-dt);
     state.speed = clamp(state.speed, 0, maxSpeed);
     const steerInput = (state.right ? 1 : 0) - (state.left ? 1 : 0);
-    state.steer += (steerInput - state.steer) * Math.min(1, dt * 5.5);
+    state.steer += (steerInput - state.steer) * Math.min(1, dt * (5.5+state.upgrades[2]*0.5));
     const speedFactor = 0.35 + state.speed / 55;
     const drifting = Math.abs(state.steer) > 0.35 && state.speed > 20;
     state.drift += ((drifting ? state.steer * 0.25 : 0) - state.drift) * dt * 2.5;
@@ -328,7 +333,7 @@ function animate() {
     player.position.z -= state.speed * dt * 0.34;
     if(state.airborne>0){state.airborne=Math.max(0,state.airborne-dt);player.position.y=0.8+Math.sin((1.1-state.airborne)/1.1*Math.PI)*2.5;state.stuntRoll+=state.steer*dt*4.2;if(state.airborne===0){player.position.y=0;if(state.stuntDone){state.nitro=Math.min(100,state.nitro+28);state.driftScore+=500;ui.nitroLabel.textContent='LANDING +NITRO';}state.stuntDone=false;state.stuntSpin=0;}}
     const stuntAt=[0.42,1.18,2.05];if(state.rampIndex<stuntAt.length&&state.distance>=stuntAt[state.rampIndex]){state.airborne=1.1;state.stuntDone=false;state.stuntRoll=0;state.rampIndex++;arcadeFX.sparks();}
-    player.rotation.y = state.stuntSpin - state.steer * 0.16 - state.steer * 0.16 - state.drift * 0.18;
+    player.rotation.y = state.stuntSpin - state.steer * 0.16 - state.drift * 0.18;
     player.rotation.z = (state.airborne>0?state.stuntRoll:0) - state.steer * 0.055 - state.drift * 0.09;
     player.userData.wheels.forEach(w => { w.rotation.x += state.speed * dt * 0.16; if (w.userData.front) w.rotation.y = -state.steer * 0.25; });
     state.distance += state.speed * dt / 3600 * 1.65;
@@ -365,6 +370,7 @@ function animate() {
     camera.position.lerp(new THREE.Vector3(player.position.x * 0.48, 5.2, player.position.z + 10.5), 0.025);
     camera.lookAt(player.position.x * 0.2, 0.8, player.position.z - 9);
   }
+  if(audioContext){engineOsc.frequency.setTargetAtTime(48+state.speed*2.2+(state.nitroOn?35:0),audioContext.currentTime,0.08);engineGain.gain.setTargetAtTime(state.running&&!state.paused?0.035:0.0001,audioContext.currentTime,0.12);tireOsc.frequency.setTargetAtTime(380+Math.abs(state.steer)*260,audioContext.currentTime,0.06);tireGain.gain.setTargetAtTime(state.running&&Math.abs(state.drift)>0.12?0.018:0.0001,audioContext.currentTime,0.08);}
   arcadeFX.render(dt,state.speed,Math.abs(state.drift)>0.08,state.nitroOn,state.shockwave>0);
 }
 camera.position.set(0, 5.5, 14);
