@@ -8,6 +8,7 @@ export default class MissionSystem {
     this.code = "welcome_drive";
     this.target = new THREE.Vector3(38, 0, -38);
     this.radius = 4;
+    this.rewardCash = 250;
     this.status = "available";
     this.busy = false;
     this.createCheckpoint();
@@ -77,10 +78,19 @@ export default class MissionSystem {
     this.button.disabled = this.busy;
     if (this.status === "available") this.setMessage("Mission available");
     if (this.status === "active") this.setMessage("Mission active · drive to the marker");
-    if (this.status === "completed") this.setMessage("Mission complete · $250 earned");
+    if (this.status === "completed") this.setMessage("Mission complete · $" + this.rewardCash.toLocaleString() + " earned");
   }
 
-  applyPlayerMissions(missions = []) {
+  applyPlayerMissions(missions = [], definitions = []) {
+    const definition = definitions.find((item) => item.mission_code === this.code);
+    if (definition) {
+      this.target.fromArray(definition.config?.target || [38, 0, -38]);
+      this.radius = Number(definition.config?.radius || 4);
+      this.rewardCash = Number(definition.reward_cash || 0);
+      this.panel.querySelector(".mission-title").textContent = definition.title || "FIRST DRIVE";
+      this.panel.querySelector(".mission-description").textContent = definition.description || "Reach the checkpoint.";
+      this.marker.position.copy(this.target);
+    }
     const current = missions.find((item) => item.mission_code === this.code);
     if (!current) return;
     this.status = current.status === "completed" ? "completed"
