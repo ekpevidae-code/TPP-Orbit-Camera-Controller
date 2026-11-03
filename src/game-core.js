@@ -21,11 +21,11 @@ export class VehiclePhysicsEngine{
  setStats(s={}){this.stats={topSpeed:s.topSpeed??54,acceleration:s.acceleration??26,handling:s.handling??5.5,nitro:s.nitro??100};}
  step(car,input,dt,{nitroMultiplier=1,shockwave=false,airborne=false}={}){
   const speed=car.speed??0,gas=input.gas?1:0,brake=input.brake?1:0,steer=THREE.MathUtils.clamp(input.steer??0,-1,1);
-  const power=this.stats.acceleration*(0.82+0.38*Math.min(1,speed/this.stats.topSpeed));
-  const drag=0.010*speed+0.00025*speed*speed;
+  const power=this.stats.acceleration*1.42*(0.9+0.5*Math.min(1,speed/this.stats.topSpeed));
+  const drag=0.006*speed+0.00012*speed*speed;
   const boost=shockwave?1.9:Math.max(1,nitroMultiplier);
   const targetCap=this.stats.topSpeed*boost;
-  const acceleration=gas*power*boost+(gas&&boost>1?10*(boost-1):0)-brake*48-drag-(gas?0:3.2);
+  const acceleration=gas*power*boost+(gas&&boost>1?16*(boost-1):0)-brake*58-drag-(gas?0:2.0);
   car.speed=THREE.MathUtils.clamp(speed+acceleration*dt,0,targetCap);
   const drifting=!!(brake&&Math.abs(steer)>0.15&&speed>12&&!airborne);
   const lateralGrip=drifting?1.1:5.8+this.stats.handling*0.42;
