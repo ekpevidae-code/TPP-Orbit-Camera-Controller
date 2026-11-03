@@ -37,7 +37,7 @@ export class NitroController{
  constructor(capacity=100){this.capacity=capacity;this.value=capacity;this.mode='READY';this.lastTap=-Infinity;this.shockwaveTime=0;this.perfectTime=0;}
  add(amount){this.value=THREE.MathUtils.clamp(this.value+amount,0,this.capacity);}
  tap(now,active){const gap=now-this.lastTap;let result='STANDARD';
-  if(this.value>=this.capacity-0.001&&gap<0.36){this.value=0;this.mode='SHOCKWAVE';this.shockwaveTime=3.1;result='SHOCKWAVE';}
+  if(this.value===this.capacity&&gap<0.36){this.value=0;this.mode='SHOCKWAVE';this.shockwaveTime=3.1;result='SHOCKWAVE';}
   else if(this.value>=68&&this.value<=90&&gap<0.42){this.value=Math.max(0,this.value-34);this.mode='PERFECT';this.perfectTime=1.7;result='PERFECT';}
   else if(this.value>0){this.mode='STANDARD';result='STANDARD';}
   this.lastTap=now;return result;
