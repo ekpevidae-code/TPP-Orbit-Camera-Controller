@@ -42,7 +42,7 @@ export default class PickupSystem {
       quantity,
       root,
       available: true,
-      respawn: 0,
+      respawn: 0,\n      pendingActionId: null,
     });
   }
 
@@ -96,7 +96,7 @@ export default class PickupSystem {
         else inventory.push({ item_code: pickup.itemCode, quantity: result.quantity });
         cloud.inventory = inventory;
         this.game.playerCloudState = cloud;
-        pickup.available = false;
+        pickup.pendingActionId = null;\n        pickup.available = false;
         pickup.root.visible = false;
         pickup.respawn = 45;
         this.setStatus("+" + added + " ammunition added to inventory.");
