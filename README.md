@@ -26,11 +26,11 @@ Use Node.js 20 or newer:
 ```sh
 npm install
 npx prisma generate
-npx prisma db push
+npx prisma migrate deploy
 npm run db:seed
 ```
 
-`db:push` creates/updates the schema directly from `prisma/schema.prisma`. For a team production workflow, generate and review Prisma migrations in a controlled development database before using `prisma migrate deploy`.
+The checked-in initial PostgreSQL migration creates the tables, relations, indexes, unique keys, and database-level balance/upgrade constraints. Use reviewed migrations for future schema changes; do not use `db push` against production.
 
 ## Run locally
 
