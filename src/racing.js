@@ -92,31 +92,44 @@ road.add(startLine);
 
 // Hills, trees and trackside details.
 const hillMat = new THREE.MeshStandardMaterial({ color: 0x687e69, roughness: 1 });
+const hillDummy = new THREE.Object3D();
+const hills = new THREE.InstancedMesh(new THREE.ConeGeometry(1, 1, 5), hillMat, 100);
 for (let i = 0; i < 100; i++) {
   const x = (i % 2 ? 1 : -1) * (28 + Math.random() * 55);
   const z = -i * 28 + 5;
-  const hill = new THREE.Mesh(new THREE.ConeGeometry(9 + Math.random() * 12, 18 + Math.random() * 25, 5), hillMat);
-  hill.position.set(x, 5, z);
-  hill.rotation.y = Math.random() * 2;
-  hill.receiveShadow = true;
-  scene.add(hill);
+  const radius = 9 + Math.random() * 12;
+  const height = 18 + Math.random() * 25;
+  hillDummy.position.set(x, height / 2, z);
+  hillDummy.scale.set(radius, height, radius);
+  hillDummy.rotation.y = Math.random() * 2;
+  hillDummy.updateMatrix();
+  hills.setMatrixAt(i, hillDummy.matrix);
 }
+hills.instanceMatrix.needsUpdate = true;
+scene.add(hills);
+
 const treeTrunk = new THREE.MeshStandardMaterial({ color: 0x5a4532, roughness: 1 });
 const treeTop = new THREE.MeshStandardMaterial({ color: 0x294a37, roughness: 1 });
+const trunks = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.18, 0.3, 2.2, 6), treeTrunk, 240);
+const crowns = new THREE.InstancedMesh(new THREE.ConeGeometry(1, 1, 7), treeTop, 240);
+const treeDummy = new THREE.Object3D();
 for (let i = 0; i < 240; i++) {
   const side = i % 2 ? 1 : -1;
   const x = side * (13 + Math.random() * 28);
   const z = 4 - i * 11.5;
-  const tree = new THREE.Group();
-  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.3, 2.2, 6), treeTrunk);
-  trunk.position.y = 1.1;
-  tree.add(trunk);
-  const crown = new THREE.Mesh(new THREE.ConeGeometry(1.35 + Math.random(), 4.4, 7), treeTop);
-  crown.position.y = 4;
-  tree.add(crown);
-  tree.position.set(x, 0, z);
-  scene.add(tree);
+  const radius = 1.35 + Math.random();
+  treeDummy.position.set(x, 1.1, z);
+  treeDummy.scale.set(1, 1, 1);
+  treeDummy.updateMatrix();
+  trunks.setMatrixAt(i, treeDummy.matrix);
+  treeDummy.position.set(x, 4, z);
+  treeDummy.scale.set(radius, 4.4, radius);
+  treeDummy.updateMatrix();
+  crowns.setMatrixAt(i, treeDummy.matrix);
 }
+trunks.instanceMatrix.needsUpdate = true;
+crowns.instanceMatrix.needsUpdate = true;
+scene.add(trunks, crowns);
 
 // Detailed low-poly sports car with body, glass, wheels, lamps and rear wing.
 function makeCar(color = 0xe64b25) {
