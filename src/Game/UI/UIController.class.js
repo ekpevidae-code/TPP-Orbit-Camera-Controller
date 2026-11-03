@@ -283,6 +283,13 @@ export default class UIController {
 
   update() {
     this.updateMiniMap();
+    const driving = !!(this.game.world && this.game.world.vehicle && this.game.world.vehicle.isDriving);
+    const jumpButton = document.getElementById('jump-btn');
+    const gasButton = document.getElementById('gas-btn');
+    const brakeButton = document.getElementById('brake-btn');
+    if (jumpButton) jumpButton.style.display = driving ? 'none' : 'block';
+    if (gasButton) gasButton.style.display = driving ? 'block' : 'none';
+    if (brakeButton) brakeButton.style.display = driving ? 'block' : 'none';
     // Update camera mode buttons if transitioning
     if (this.game.camera.isTransitioning) {
       this.updateCameraModeButtons();
@@ -380,77 +387,48 @@ export default class UIController {
   initializeVirtualJoystick() {
     this.joystickContainer = document.getElementById('virtual-joystick');
     this.joystickKnob = document.getElementById('joystick-knob');
-    
     if (!this.joystickContainer || !this.joystickKnob) return;
-    
-    this.joystickData = {
-      active: false,
-      centerX: 0,
-      centerY: 0,
-      currentX: 0,
-      currentY: 0,
-      maxDistance: 35, // Maximum distance from center
-      deadZone: 0.1 // Minimum input threshold
-    };
-    
-    // Calculate center position
-    this.updateJoystickCenter();
-    
-    // Touch events
-    this.joystickKnob.addEventListener('touchstart', (e) => {
-      e.preventDefault();
-      const touch = e.changedTouches[0];
-      if (!touch) return;
-      this.joystickTouchId = touch.identifier;
-      this.startJoystick(touch);
-    });
-    
-    this.joystickContainer.addEventListener('touchmove', (e) => {
-      e.preventDefault();
-      if (this.joystickData.active && this.joystickTouchId !== null) {
-        const touch = Array.from(e.touches).find((item) => item.identifier === this.joystickTouchId);
-        if (touch) this.moveJoystick(touch);
-      }
-    });
-    
-    this.joystickContainer.addEventListener('touchend', (e) => {
-      e.preventDefault();
-      if (Array.from(e.changedTouches).some((touch) => touch.identifier === this.joystickTouchId)) {
-        this.joystickTouchId = null;
-        this.endJoystick();
-      }
-    });
 
-    this.joystickContainer.addEventListener('touchcancel', (e) => {
-      e.preventDefault();
-      if (Array.from(e.changedTouches).some((touch) => touch.identifier === this.joystickTouchId)) {
-        this.joystickTouchId = null;
-        this.endJoystick();
+    this.joystickData = {
+      active: false, centerX: 0, centerY: 0,
+      currentX: 0, currentY: 0, maxDistance: 35, deadZone: 0.1
+    };
+    this.joystickPointerId = null;
+    this.updateJoystickCenter();
+
+    // Start anywhere on the joystick base, not only on the small center knob.
+    this.joystickContainer.addEventListener('pointerdown', (event) => {
+      event.preventDefault();
+      if (this.joystickPointerId !== null) return;
+      this.joystickPointerId = event.pointerId;
+      try { this.joystickContainer.setPointerCapture(event.pointerId); } catch (_) {}
+      this.startJoystick(event);
+      this.moveJoystick(event);
+    });
+    this.joystickContainer.addEventListener('pointermove', (event) => {
+      if (this.joystickData.active && event.pointerId === this.joystickPointerId) {
+        event.preventDefault();
+        this.moveJoystick(event);
       }
     });
-    
-    // Mouse events for desktop testing
-    this.joystickKnob.addEventListener('mousedown', (e) => {
-      e.preventDefault();
-      this.startJoystick(e);
+    const finish = (event) => {
+      if (event.pointerId !== this.joystickPointerId) return;
+      this.joystickPointerId = null;
+      this.endJoystick();
+    };
+    ['pointerup', 'pointercancel', 'lostpointercapture'].forEach((type) => {
+      this.joystickContainer.addEventListener(type, finish);
     });
-    
-    document.addEventListener('mousemove', (e) => {
-      if (this.joystickData.active) {
-        this.moveJoystick(e);
-      }
-    });
-    
-    document.addEventListener('mouseup', () => {
+    window.addEventListener('resize', () => this.updateJoystickCenter());
+    window.addEventListener('blur', () => {
+      this.joystickPointerId = null;
       this.endJoystick();
     });
-    
-    // Handle window resize
-    window.addEventListener('resize', () => {
-      this.updateJoystickCenter();
+    document.addEventListener('contextmenu', (event) => {
+      if (this.joystickContainer.contains(event.target)) event.preventDefault();
     });
   }
-  
+
   updateJoystickCenter() {
     if (!this.joystickContainer) return;
     
