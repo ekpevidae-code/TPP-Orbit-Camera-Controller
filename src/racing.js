@@ -199,7 +199,9 @@ player.position.set(0, 0, 4);
 const rivals = [
   { car: makeCar(0x246acb), x: -3.4, z: -28, speed: 0.9 },
   { car: makeCar(0xe6e8e9), x: 3.3, z: -48, speed: 0.84 },
-  { car: makeCar(0x242a35), x: -1.8, z: -72, speed: 0.8 }
+  { car: makeCar(0x242a35), x: -1.8, z: -72, speed: 0.8 },
+  { car: makeCar(0xc23e42), x: 5.1, z: -96, speed: 0.82 },
+  { car: makeCar(0x7b8793), x: -5.0, z: -120, speed: 0.78 }
 ];
 
 rivals.forEach(r => r.car.position.set(r.x, 0, r.z));
