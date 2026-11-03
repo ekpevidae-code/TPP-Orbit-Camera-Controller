@@ -91,7 +91,7 @@ async function supabaseRequest(path, { method = 'GET', body, auth = true, retry 
 }
 
 export async function registerAccount({ email, username, password }) {
-  const result = await supabaseRequest('/auth/v1/signup', {
+  const result = await supabaseRequest('/auth/v1/signup?redirect_to=' + encodeURIComponent(window.location.origin), {
     method: 'POST', auth: false,
     body: { email, password, data: { username: username.trim() } }
   });
