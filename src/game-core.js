@@ -63,5 +63,5 @@ export class GameLoop{
  constructor(update,render){this.update=update;this.render=render;this.last=0;this.accumulator=0;this.fixed=1/60;this.frame=0;this.running=false;this.bound=this.tick.bind(this);}
  start(){if(!this.running){this.running=true;this.last=0;requestAnimationFrame(this.bound);}}
  stop(){this.running=false;}
- tick(now){if(!this.running)return;requestAnimationFrame(this.bound);const frameDt=this.last?Math.min((now-this.last)/1000,0.05):0;this.last=now;this.accumulator+=frameDt;let steps=0;while(this.accumulator>=this.fixed&&steps<3){this.update(this.fixed);this.accumulator-=this.fixed;steps++;}this.render(frameDt,this.accumulator/this.fixed);this.frame++;}
+ tick(now){if(!this.running)return;requestAnimationFrame(this.bound);const frameDt=this.last?Math.min((now-this.last)/1000,0.1):0;this.last=now;this.accumulator+=frameDt;let steps=0;while(this.accumulator>=this.fixed&&steps<6){this.update(this.fixed);this.accumulator-=this.fixed;steps++;}if(steps===6&&this.accumulator>=this.fixed)this.accumulator=this.accumulator%this.fixed;this.render(frameDt,this.accumulator/this.fixed);this.frame++;}
 }
