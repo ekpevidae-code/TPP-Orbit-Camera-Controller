@@ -528,3 +528,195 @@ canvas#three {
   .ammo-hud { right: 14px; top: 12px; }
   .wanted-level { top: 12px; }
 }
+
+
+/* === Unified mobile open-world HUD ===
+   One landscape layout replaces the earlier overlapping per-button overrides.
+   Existing game systems keep ownership of button behavior and pointer events.
+*/
+:root {
+  --hud-panel: rgba(8, 14, 20, 0.78);
+  --hud-border: rgba(255, 255, 255, 0.34);
+  --hud-text: rgba(255, 255, 255, 0.96);
+  --hud-shadow: 0 5px 18px rgba(0, 0, 0, 0.38);
+}
+button {
+  -webkit-tap-highlight-color: transparent;
+  font-family: inherit;
+}
+#mobile-controls {
+  position: fixed;
+  left: max(18px, env(safe-area-inset-left));
+  right: auto;
+  bottom: max(18px, env(safe-area-inset-bottom));
+  z-index: 1000;
+  display: flex;
+  align-items: flex-end;
+  opacity: 1;
+}
+.joystick-container,
+.joystick-base {
+  width: clamp(108px, 17vw, 142px);
+  height: clamp(108px, 17vw, 142px);
+}
+.joystick-base {
+  border: 2px solid rgba(255,255,255,.5);
+  background: rgba(12, 20, 27, .38);
+  box-shadow: var(--hud-shadow), inset 0 0 20px rgba(255,255,255,.06);
+}
+.joystick-knob {
+  width: 43%;
+  height: 43%;
+  background: rgba(245,248,250,.88);
+  border: 2px solid rgba(255,255,255,.92);
+}
+#camera-controls {
+  top: max(12px, env(safe-area-inset-top));
+  right: max(14px, env(safe-area-inset-right));
+  z-index: 1100;
+}
+.camera-mode-selector {
+  gap: 3px;
+  padding: 5px;
+  border: 1px solid var(--hud-border);
+  border-radius: 15px;
+  background: var(--hud-panel);
+  box-shadow: var(--hud-shadow);
+  backdrop-filter: blur(14px);
+}
+.mode-btn {
+  min-width: 62px;
+  padding: 8px 11px;
+}
+.mode-btn.active {
+  background: rgba(255,255,255,.13);
+}
+.wanted-level {
+  top: max(14px, env(safe-area-inset-top));
+  left: 50%;
+  padding: 9px 15px;
+  border-radius: 12px;
+  background: var(--hud-panel);
+  border: 1px solid var(--hud-border);
+  color: var(--hud-text);
+  box-shadow: var(--hud-shadow);
+  backdrop-filter: blur(12px);
+  font-size: clamp(11px, 1.5vw, 14px);
+}
+.ammo-hud {
+  top: 76px;
+  right: max(14px, env(safe-area-inset-right));
+  padding: 9px 13px;
+  border: 1px solid var(--hud-border);
+  border-radius: 10px;
+  background: var(--hud-panel);
+  color: var(--hud-text);
+  box-shadow: var(--hud-shadow);
+}
+.crime-btn {
+  top: 132px;
+  right: max(14px, env(safe-area-inset-right));
+  bottom: auto;
+  border-radius: 12px;
+  box-shadow: var(--hud-shadow);
+}
+.vehicle-btn {
+  right: max(18px, env(safe-area-inset-right));
+  bottom: 126px;
+  min-height: 48px;
+  border-radius: 13px;
+  background: var(--hud-panel);
+  box-shadow: var(--hud-shadow);
+  opacity: .88;
+}
+.run-btn {
+  left: 164px;
+  right: auto;
+  bottom: max(28px, env(safe-area-inset-bottom));
+  width: 68px;
+  height: 52px;
+  border-radius: 15px;
+  box-shadow: var(--hud-shadow);
+}
+.fire-btn {
+  right: max(18px, env(safe-area-inset-right));
+  bottom: max(22px, env(safe-area-inset-bottom));
+  width: 76px;
+  height: 76px;
+  border: 2px solid rgba(255,255,255,.65);
+  box-shadow: var(--hud-shadow);
+}
+.reload-btn {
+  right: 108px;
+  bottom: max(32px, env(safe-area-inset-bottom));
+  width: 58px;
+  height: 58px;
+  box-shadow: var(--hud-shadow);
+}
+.combat-btn,
+.vehicle-btn,
+.crime-btn,
+.run-btn,
+.mode-btn {
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.aim-reticle { opacity: .9; }
+#rotate-screen-btn { backdrop-filter: blur(12px); }
+
+@media (max-width: 900px) and (orientation: landscape) {
+  #mobile-controls {
+    left: max(16px, env(safe-area-inset-left));
+    bottom: max(16px, env(safe-area-inset-bottom));
+  }
+  .joystick-container,
+  .joystick-base {
+    width: clamp(104px, 17vw, 132px);
+    height: clamp(104px, 17vw, 132px);
+  }
+  .run-btn {
+    left: max(150px, calc(16px + 17vw));
+    bottom: max(26px, env(safe-area-inset-bottom));
+  }
+  .fire-btn {
+    right: max(16px, env(safe-area-inset-right));
+    bottom: max(18px, env(safe-area-inset-bottom));
+    width: 70px;
+    height: 70px;
+  }
+  .reload-btn {
+    right: 94px;
+    bottom: max(26px, env(safe-area-inset-bottom));
+    width: 54px;
+    height: 54px;
+  }
+  .vehicle-btn {
+    right: max(16px, env(safe-area-inset-right));
+    bottom: 102px;
+  }
+  .crime-btn {
+    top: 112px;
+    right: max(16px, env(safe-area-inset-right));
+  }
+  .ammo-hud {
+    top: 66px;
+    right: max(16px, env(safe-area-inset-right));
+  }
+}
+@media (max-height: 430px) and (orientation: landscape) {
+  .wanted-level { padding: 6px 10px; }
+  .camera-mode-selector { padding: 3px; }
+  .mode-btn { min-width: 48px; padding: 5px 8px; }
+  .ammo-hud { top: 56px; padding: 6px 9px; }
+  .crime-btn { top: 98px; padding: 8px 10px; }
+  .vehicle-btn { bottom: 90px; min-height: 40px; padding: 9px 12px; }
+  .fire-btn { width: 62px; height: 62px; }
+  .reload-btn { right: 82px; width: 48px; height: 48px; }
+}
+@media (orientation: portrait) and (max-width: 900px) {
+  #rotate-screen-btn { display: block; }
+  #mobile-controls, .run-btn, .fire-btn, .reload-btn, .vehicle-btn, .crime-btn {
+    opacity: .2;
+  }
+}
