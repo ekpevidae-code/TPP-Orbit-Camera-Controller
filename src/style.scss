@@ -930,3 +930,17 @@ button { font: inherit; -webkit-tap-highlight-color:transparent; }
 @media (orientation:portrait) and (max-width:900px) {
   .game-account-panel { top:56px; }
 }
+
+/* Nearby world pickup interaction */
+.pickup-panel {
+  position:fixed; z-index:1250; left:50%; bottom:clamp(105px,18vh,150px);
+  transform:translateX(-50%); display:flex; flex-direction:column; align-items:center;
+  gap:7px; padding:9px 12px; border:1px solid rgba(255,255,255,.22);
+  border-radius:13px; background:rgba(8,18,24,.9); color:#fff;
+  box-shadow:0 6px 22px rgba(0,0,0,.38); pointer-events:auto;
+}
+.pickup-panel[hidden] { display:none !important; }
+.pickup-status { margin:0; font-size:9px; letter-spacing:1.2px; color:#b9d6ca; font-weight:800; }
+.pickup-status.error { color:#ff9d91; }
+.pickup-action { min-height:40px; padding:0 18px; border:0; border-radius:9px; background:#b9e3d1; color:#071510; font-size:11px; font-weight:900; letter-spacing:.6px; }
+.pickup-action:disabled { opacity:.55; }
