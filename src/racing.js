@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { createArcadeFX } from './arcade-systems.js';
+import { GAME_STATES, VEHICLES, GameStateManager, VehiclePhysicsEngine, NitroController, AABBCollisionSystem, WaypointRacerAI, GameLoop } from './game-core.js';
 
 const canvas = document.querySelector('#race-canvas');
 const ui = {
@@ -190,6 +191,7 @@ function makeCar(color = 0xe64b25) {
 }
 
 const player = makeCar(0xf04d25);
+player.speed=0;
 player.position.set(0, 0, 4);
 const rivals = [
   { car: makeCar(0x246acb), x: -3.4, z: -28, speed: 0.9 },
@@ -206,8 +208,15 @@ const ramps=[-300,-850,-1470];
 ramps.forEach((z,i)=>{const ramp=new THREE.Mesh(new THREE.BoxGeometry(6.2,0.7,7),new THREE.MeshStandardMaterial({color:i===1?0x21b9d5:0xffa43b,metalness:0.35,roughness:0.3,emissive:i===1?0x063d48:0x3a1600,emissiveIntensity:0.35}));ramp.position.set(i===1?2.5:-2.3,0.42,z);ramp.rotation.x=-0.16;ramp.castShadow=true;ramp.receiveShadow=true;scene.add(ramp);});
 
 
+const gameStates=new GameStateManager(GAME_STATES.GARAGE);
+const vehiclePhysics=new VehiclePhysicsEngine(VEHICLES[0]);
+const nitroSystem=new NitroController(VEHICLES[0].nitro);
+const collisions=new AABBCollisionSystem();
 const state = { speed: 0, steer: 0, drift: 0, nitro: 100, distance: 0, driftScore: 0, driftTime: 0, driftToastTime: 0, running: false, paused: false, finished: false, gas: false, brake: false, left: false, right: false, nitroOn: false, last: 0, shake: 0, airborne: 0, stuntSpin: 0, stuntSpinRate: 0, stuntRoll: 0, stuntDone: false, nitroTap: 0, nitroMode: 0, shockwave: 0, perfect: 0, rampIndex: 0, nearMissCooldown: 0, selectedCar: 0, upgrades: [0,0,0,0] };
 const arcadeFX = createArcadeFX(scene,camera,renderer,player);
+let countdownRemaining=0, crashTime=0;
+const aiControllers=rivals.map((r,i)=>new WaypointRacerAI(r.car,[{x:r.x,z:-100},{x:r.x*0.65,z:-430},{x:r.x,z:-900},{x:r.x*0.8,z:-1500}],r.speed));
+gameStates.on('change',({current})=>{if(ui.state)ui.state.textContent=current.replace('_',' ');document.body.dataset.gameState=current;});
 const totalDistance = 3.0;
 const clamp = THREE.MathUtils.clamp;
 const clock = new THREE.Clock();
@@ -236,7 +245,7 @@ function startRace() {
   ui.state.textContent = 'RACE IN PROGRESS';
 }
 function resetRace() {
-  state.speed = 0; state.steer = 0; state.drift = 0; state.nitro = 100; state.distance = 0; state.driftScore = 0; state.driftTime = 0; state.driftToastTime = 0; state.airborne=0;state.stuntSpin=0;state.stuntRoll=0;state.stuntDone=false;state.nitroMode=0;state.shockwave=0;state.perfect=0;state.rampIndex=0;
+  state.speed = 0; player.speed=0;nitroSystem.value=VEHICLES[state.selectedCar||0].nitro;gameStates.transition(GAME_STATES.GARAGE); state.steer = 0; state.drift = 0; state.nitro = 100; state.distance = 0; state.driftScore = 0; state.driftTime = 0; state.driftToastTime = 0; state.airborne=0;state.stuntSpin=0;state.stuntRoll=0;state.stuntDone=false;state.nitroMode=0;state.shockwave=0;state.perfect=0;state.rampIndex=0;
   state.running = false; state.paused = false; state.finished = false;
   player.position.set(0, 0, 4); player.rotation.set(0, 0, 0);
   rivals.forEach((r, i) => { r.car.position.set(r.x, 0, -28 - i * 20); r.car.rotation.set(0, 0, 0); });
@@ -268,10 +277,10 @@ bindHold('left', 'left');
 bindHold('right', 'right');
 bindHold('nitro', 'nitroOn');
 const nitroButton=document.querySelector('#nitro');
-nitroButton.addEventListener('pointerdown',e=>{const now=performance.now();if(state.nitro>=99&&now-state.nitroTap<360){state.shockwave=3.2;state.nitro=0;state.nitroMode=2;state.speed=Math.min(96,state.speed+28);arcadeFX.sparks();ui.nitroLabel.textContent='SHOCKWAVE';}else if(state.nitro>=72&&state.nitro<=88){state.perfect=1.8;state.nitro=Math.max(0,state.nitro-35);state.speed=Math.min(88,state.speed+18);state.nitroMode=1;ui.nitroLabel.textContent='PERFECT';}state.nitroTap=now;});
+nitroButton.addEventListener('pointerdown',e=>{const result=nitroSystem.tap(performance.now()/1000,state.running);state.nitro=nitroSystem.value;if(result==='SHOCKWAVE'){state.shockwave=3.1;arcadeFX.sparks();ui.nitroLabel.textContent='SHOCKWAVE';}else if(result==='PERFECT'){state.perfect=1.7;ui.nitroLabel.textContent='PERFECT';}else ui.nitroLabel.textContent='NITRO';});
 document.querySelector('#stunt')?.addEventListener('pointerdown',()=>{if(state.airborne>0){state.stuntSpinRate=state.stuntSpinRate||Math.PI*5;state.stuntDone=true;}});
 document.querySelector('#garage-start')?.addEventListener('click',startRace);
-document.querySelectorAll('[data-car]').forEach(btn=>btn.addEventListener('click',()=>{state.selectedCar=Number(btn.dataset.car);const colors=[0xf04d25,0x20a8d8,0xd6dce4];player.traverse(o=>{if(o.isMesh&&o.material?.metalness>0.5&&o.material.color) o.material.color.setHex(colors[state.selectedCar]);});document.querySelectorAll('[data-car]').forEach(b=>b.classList.toggle('selected',b===btn));}));
+document.querySelectorAll('[data-car]').forEach(btn=>btn.addEventListener('click',()=>{state.selectedCar=Number(btn.dataset.car);const colors=[0xf04d25,0x20a8d8,0xd6dce4];vehiclePhysics.setStats(VEHICLES[state.selectedCar]);nitroSystem.capacity=VEHICLES[state.selectedCar].nitro;nitroSystem.value=nitroSystem.capacity;player.traverse(o=>{if(o.isMesh&&o.material?.metalness>0.5&&o.material.color) o.material.color.setHex(colors[state.selectedCar]);});document.querySelectorAll('[data-car]').forEach(b=>b.classList.toggle('selected',b===btn));}));
 document.querySelectorAll('[data-upgrade]').forEach(btn=>btn.addEventListener('click',()=>{const i=Number(btn.dataset.upgrade);state.upgrades[i]=Math.min(3,state.upgrades[i]+1);btn.querySelector('b').textContent='+'+state.upgrades[i];}));
 
 document.querySelector('#pause').addEventListener('click', () => setPause(!state.paused));
@@ -301,23 +310,18 @@ function animate() {
   requestAnimationFrame(animate);
   const dt = Math.min(clock.getDelta(), 0.04);
   if (state.running && !state.paused && !state.finished) {
-    const accel = state.gas ? 26 + state.upgrades[1]*2.2 : 0;
-    const braking = state.brake ? 48 : 0;
-    const usingNitro = state.nitroOn && state.nitro > 0 && state.speed > 12;
-    const maxSpeed = state.shockwave>0?96:(usingNitro ? 76 + state.upgrades[0]*2 : 54 + state.upgrades[0]*2);
-    state.speed += (accel - braking - (state.gas ? 0 : 5.5)) * dt;
-    if (usingNitro) { state.speed = Math.min(maxSpeed, state.speed + 22 * dt); state.nitro = Math.max(0, state.nitro - Math.max(17,29-state.upgrades[3]*3) * dt); }
-    else state.nitro = Math.min(100, state.nitro + 5 * dt);
-    if(state.shockwave>0){state.shockwave=Math.max(0,state.shockwave-dt);state.speed=Math.min(96,state.speed+12*dt);if(state.shockwave===0)ui.nitroLabel.textContent='NITRO';}
-    if(state.perfect>0)state.perfect=Math.max(0,state.perfect-dt);
-    state.speed = clamp(state.speed, 0, maxSpeed);
-    const steerInput = (state.right ? 1 : 0) - (state.left ? 1 : 0);
-    state.steer += (steerInput - state.steer) * Math.min(1, dt * (5.5+state.upgrades[2]*0.5));
-    const speedFactor = 0.35 + state.speed / 55;
-    const drifting = Math.abs(state.steer) > 0.25 && (state.brake || Math.abs(state.steer)>0.35) && state.speed > 20;
-    state.drift += ((drifting ? state.steer * 0.25 : 0) - state.drift) * dt * 2.5;
+    const steerInput=(state.right?1:0)-(state.left?1:0);
+    state.steer=THREE.MathUtils.damp(state.steer,steerInput,vehiclePhysics.stats.handling*2.2,dt);
+    const nitroState=nitroSystem.step(dt,state.nitroOn&&state.speed>12);
+    state.nitro=nitroState.value;state.shockwave=nitroState.shockwave?nitroSystem.shockwaveTime:0;state.perfect=nitroState.perfect?nitroSystem.perfectTime:0;
+    const nitroMultiplier=state.nitroOn&&state.nitro>0?(state.perfect>0?1.55:1.3):1;
+    const physics=vehiclePhysics.step(player,{gas:state.gas,brake:state.brake,steer:state.steer},dt,{nitroMultiplier,shockwave:nitroState.shockwave,airborne:state.airborne>0});
+    const drifting=physics.drifting;state.speed=physics.speed;player.speed=state.speed;
+    const maxSpeed=vehiclePhysics.stats.topSpeed*(nitroState.shockwave?1.85:nitroMultiplier);
+    state.drift=THREE.MathUtils.damp(state.drift,drifting?state.steer*0.45:0,drifting?1.1:5,dt);
+    const speedFactor=0.35+state.speed/55;
     if (drifting) {
-      state.nitro=Math.min(100,state.nitro+(state.speed*0.012+4)*dt); arcadeFX.skid();
+      nitroSystem.add((state.speed*0.012+4)*dt);state.nitro=nitroSystem.value;arcadeFX.skid();
       state.driftTime += dt;
       state.driftScore += Math.round((state.speed * 0.8 + Math.abs(state.steer) * 35) * dt);
       state.driftToastTime = 1.1;
@@ -331,7 +335,7 @@ function animate() {
     player.position.x += (state.steer * speedFactor * 7.2 + state.drift * 3.4) * dt;
     player.position.x = clamp(player.position.x, -6.7, 6.7);
     player.position.z -= state.speed * dt * 0.34;
-    if(state.airborne>0){state.airborne=Math.max(0,state.airborne-dt);state.stuntSpin+=state.stuntSpinRate*dt;player.position.y=0.8+Math.sin((1.1-state.airborne)/1.1*Math.PI)*2.5;state.stuntRoll+=state.steer*dt*4.2;if(state.airborne===0){player.position.y=0;if(state.stuntDone){state.nitro=Math.min(100,state.nitro+28);state.driftScore+=500;ui.nitroLabel.textContent='LANDING +NITRO';}state.stuntDone=false;state.stuntSpin=0;state.stuntSpinRate=0;}}
+    if(state.airborne>0){state.airborne=Math.max(0,state.airborne-dt);state.stuntSpin+=state.stuntSpinRate*dt;player.position.y=0.8+Math.sin((1.1-state.airborne)/1.1*Math.PI)*2.5;state.stuntRoll+=state.steer*dt*4.2;if(state.airborne===0){player.position.y=0;if(state.stuntDone){nitroSystem.add(28);state.nitro=nitroSystem.value;state.driftScore+=500;ui.nitroLabel.textContent='LANDING +NITRO';}state.stuntDone=false;state.stuntSpin=0;state.stuntSpinRate=0;}}
     const stuntAt=[0.42,1.18,2.05];if(state.rampIndex<stuntAt.length&&state.distance>=stuntAt[state.rampIndex]){state.airborne=1.1;state.stuntDone=false;state.stuntRoll=0;state.stuntSpin=0;state.stuntSpinRate=0;state.rampIndex++;arcadeFX.sparks();}
     player.rotation.y = state.stuntSpin - state.steer * 0.16 - state.drift * 0.18;
     player.rotation.z = (state.airborne>0?state.stuntRoll:0) - state.steer * 0.055 - state.drift * 0.09;
@@ -343,9 +347,9 @@ function animate() {
       r.car.position.x = r.x + Math.sin(clock.elapsedTime * 0.35 + i) * 0.45;
     });
     state.nearMissCooldown=Math.max(0,state.nearMissCooldown-dt);
-    traffic.forEach((t,i)=>{t.car.position.z+=state.speed*dt*0.34-(t.speed*11*dt);if(t.car.position.z>13)t.car.position.z=-260-Math.random()*160;t.car.position.x=t.x+Math.sin(clock.elapsedTime*0.22+i)*0.28;const gap=Math.abs(t.car.position.z-player.position.z);const laneGap=Math.abs(t.car.position.x-player.position.x);if(gap<3.2&&laneGap<2.3&&laneGap>1.15&&state.nearMissCooldown===0){state.nitro=Math.min(100,state.nitro+12);state.nearMissCooldown=1.2;arcadeFX.sparks();ui.nitroLabel.textContent='NEAR MISS +';}});
+    traffic.forEach((t,i)=>{t.car.position.z+=state.speed*dt*0.34-(t.speed*11*dt);if(t.car.position.z>13)t.car.position.z=-260-Math.random()*160;t.car.position.x=t.x+Math.sin(clock.elapsedTime*0.22+i)*0.28;const gap=Math.abs(t.car.position.z-player.position.z);const laneGap=Math.abs(t.car.position.x-player.position.x);if(gap<3.2&&laneGap<2.3&&laneGap>1.15&&state.nearMissCooldown===0){nitroSystem.add(12);state.nitro=nitroSystem.value;state.nearMissCooldown=1.2;arcadeFX.sparks();ui.nitroLabel.textContent='NEAR MISS +';}});
 
-    camera.fov=THREE.MathUtils.damp(camera.fov,66+Math.max(0,state.speed-25)*0.42+(usingNitro?8:0),4,dt);camera.updateProjectionMatrix();
+    const collision=collisions.hit(player,traffic.map(t=>t.car));if(collision&&!nitroState.shockwave&&crashTime<=0){player.speed*=0.55;state.speed=player.speed;crashTime=0.8;ui.nitroLabel.textContent='CRASH!';}crashTime=Math.max(0,crashTime-dt);\n    camera.fov=THREE.MathUtils.damp(camera.fov,66+Math.max(0,state.speed-25)*0.42+(usingNitro?8:0),4,dt);camera.updateProjectionMatrix();
     const targetCam = new THREE.Vector3(player.position.x * 0.48, 5.4 + state.speed * 0.018, player.position.z + 10.5+state.speed*0.035);
     camera.position.lerp(targetCam, 1 - Math.pow(0.001, dt));
     camera.lookAt(player.position.x * 0.2, 0.8, player.position.z - 9);
@@ -360,7 +364,7 @@ function animate() {
     const suffix = place === 1 ? 'ST' : place === 2 ? 'ND' : place === 3 ? 'RD' : 'TH';
     document.querySelector('#position').innerHTML = place + '<span>' + suffix + '</span>';
     if (state.distance >= totalDistance) {
-      state.finished = true; state.running = false; state.speed = 0;
+      state.finished = true; state.running = false; state.speed = 0;gameStates.transition(GAME_STATES.GAME_OVER);
       ui.finishTitle.textContent = 'FINISH!';
       ui.finishCopy.textContent = 'You completed the 3 km sprint. Run it again and beat your time.';
       ui.finish.classList.remove('hidden');
@@ -375,4 +379,4 @@ function animate() {
 }
 camera.position.set(0, 5.5, 14);
 camera.lookAt(0, 0.8, -8);
-animate();
+const gameLoop=new GameLoop(dt=>animate(dt),()=>{});\ngameLoop.start();
