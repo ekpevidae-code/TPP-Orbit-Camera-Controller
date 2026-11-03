@@ -1,108 +1,70 @@
-# Velocity Run — game client and API
+# Velocity Run
 
-## Architecture
+A mobile-first Three.js arcade racer built with Vite and Vanilla JavaScript.
 
-- The Vite/Three.js client is deployed as a static site on Vercel.
-- `server.js` is a separate, persistent Node.js API process. Do not deploy it as a long-running process inside a Vercel static build.
-- PostgreSQL stores accounts, wallets, the D/C/B/A/S car catalogue, owned cars, upgrades, race records, and an immutable-style economy ledger.
-- Prisma runs all purchase and upgrade mutations in serializable transactions. Wallet debits are conditional and owned cars have a unique `(userId, carModelId)` key.
-- The browser never receives database credentials. It sends a short-lived JWT access token to the API.
+## Current architecture
 
-## Required environment
+- **Game client:** Vite + Vanilla JavaScript + Three.js, deployed as a static Vercel site.
+- **Identity:** Supabase Auth email/password sessions.
+- **Database:** Supabase PostgreSQL project `tpp-open-world-game-backend` (Free organization, region `eu-west-1`, project ref `jgoygfnlvgognltxtfyf`).
+- **Game backend:** authenticated PostgreSQL RPC functions. Each purchase and upgrade is a single database transaction with row locks, ownership checks, balance checks and idempotency receipts.
+- **Security:** RLS is enabled on racing tables. The browser only receives the Supabase publishable key. Service-role and database credentials are never included in frontend code.
+- **No landscape lock:** the game adapts to the current viewport, including portrait mobile screens. Three.js updates the camera aspect and renderer size when the viewport changes.
 
-Copy `.env.example` to `.env` on the API host and set real values:
+The existing open-world game tables in Supabase are preserved. Velocity Run uses its own `race_*` tables and functions.
 
-- `DATABASE_URL`: PostgreSQL connection string.
-- `JWT_SECRET`: at least 32 random characters; keep it private.
-- `CORS_ORIGIN`: exact Vercel frontend origin(s), comma-separated.
-- `PORT`: API listening port.
+## Supabase racing data
 
-Set `VITE_API_URL` in the Vercel project build environment to the public HTTPS origin of the API. Rebuild the frontend after changing it.
+- `race_car_models`: seeded D, C, B, A and S class catalogue.
+- `race_player_cars`: player-owned cars and four upgrade levels, with a unique ownership constraint and at most one selected car per player.
+- `race_economy_ledger`: append-only credit debits and adjustments.
+- `race_action_receipts`: idempotency keys and replayable mutation responses.
+- `race_results`: race records. Client-submitted results remain unverified and do not grant rewards.
 
-## Initialize PostgreSQL
+The first garage request creates the player's racing profile if needed, a 25,000-credit starting wallet if no wallet exists, and the free Falcon GT starter car.
 
-Use Node.js 20 or newer:
+### Authenticated RPC endpoints
+
+- `race_get_garage()`
+- `race_purchase_car(p_car_model_id, p_action_key)`
+- `race_upgrade_car(p_player_car_id, p_stat, p_action_key)`
+- `race_select_car(p_player_car_id)`
+- `race_record_result(...)`
+
+The purchase RPC locks the player's wallet before debiting and creating ownership. The upgrade RPC locks the owned car and wallet, calculates the price on the server, and updates the selected stat. Repeated requests with the same action key return the original response rather than charging twice.
+
+## Local development
+
+Copy `.env.example` to `.env.local` and set:
+
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY` (the Supabase publishable key; it is intended for browser use with RLS)
+
+Then run:
 
 ```sh
 npm install
-npx prisma generate
-npx prisma migrate deploy
-npm run db:seed
-```
-
-The checked-in initial PostgreSQL migration creates the tables, relations, indexes, unique keys, and database-level balance/upgrade constraints. Use reviewed migrations for future schema changes; do not use `db push` against production.
-
-## Run locally
-
-Terminal 1 (API):
-
-```sh
-npm run api
-```
-
-Terminal 2 (game client):
-
-```sh
 npm run dev
 ```
 
-The API health check is `GET /health`. The client uses `VITE_API_URL`; set it to `http://localhost:4000` for local development.
+The Vercel project has both variables configured for Production, Preview and Development. A new deployment is required after changing build environment variables.
 
-## API endpoints
+If Supabase email confirmation is enabled, a new player must confirm the email address before signing in. The account form returns to the current game URL after confirmation.
 
-- `POST /api/auth/register` — create account and starter wallet.
-- `POST /api/auth/login` — issue a two-hour bearer token.
-- `GET /api/garage` — return wallet, owned cars, and enabled catalogue.
-- `POST /api/garage/purchase` — purchase a catalogue car; supports `Idempotency-Key`.
-- `POST /api/garage/upgrade` — upgrade one stat for an owned car; supports `Idempotency-Key`.
-- `POST /api/garage/select` — select an owned car.
-- `POST /api/races/results` — store a race record for an owned car.
+## Database migrations
 
-The race result endpoint currently records client-submitted race data and must not be used as a trusted competitive leaderboard or reward authority until server-authoritative race sessions and anti-cheat validation are deployed.
+The racing migrations are checked into `supabase/migrations/` and have been applied to the existing Supabase project:
 
-## Container deployment
+1. `20261103221454_velocity_run_racing_garage.sql`
+2. `20261103221522_race_economy_idempotency_and_indexes.sql`
+3. `20261103221600_race_selected_car_transaction_lock.sql`
 
-A Dockerfile is included for a persistent API host. Build the image from the repository root, configure the required environment variables, and run the database initialization commands once before sending traffic:
+The Supabase project also contains earlier open-world-game migrations that are not recreated by these racing-only files.
 
-```sh
-docker build -t velocity-run-api .
-docker run -p 4000:4000 --env-file .env velocity-run-api
-```
+## Important competitive-integrity boundary
 
-Before the first API start, run `npx prisma db push` and `npm run db:seed` from the same image/container with the database environment configured. Keep the API service running separately from the Vercel static frontend.
+Race results submitted by the browser are marked `verified = false`, and the database awards no race credits. Do not use these client-submitted records for competitive leaderboards or rewards. Those features require authoritative race sessions and server-side simulation/anti-cheat validation.
 
-## Important deployment boundary
+## Legacy backend files
 
-The repository contains the complete API source and database schema, but the API is not live until a PostgreSQL database and a persistent Node.js host are configured with the environment variables above. The current Vercel deployment serves the game frontend only. No database credentials or hosted database were present in the connected project, so none have been fabricated or committed.
-
-
-## Velocity Run Supabase backend (active racing runtime)
-
-The racing client now uses the existing Supabase project `tpp-open-world-game-backend` in the `Universal AI Builder` Free organization. Project reference: `jgoygfnlvgognltxtfyf`, region: `eu-west-1`.
-
-The existing open-world game tables are preserved. The racing migration adds a separate racing catalogue, player-car ownership/upgrades, an append-only racing economy ledger, idempotency receipts, and race-result records. The racing account system uses Supabase Auth; there is no database password or service-role key in the browser.
-
-### Racing backend operations
-
-- `race_get_garage()`: initializes the player's racing profile, wallet (25,000 starting credits if no wallet exists), and Falcon GT starter car, then returns garage and catalogue.
-- `race_purchase_car(carModelId, actionKey)`: row-locks the wallet, checks funds and ownership, debits credits and creates the owned car in one Postgres transaction. Action keys are idempotent.
-- `race_upgrade_car(playerCarId, stat, actionKey)`: locks the owned car and wallet, enforces level 10, charges a server-calculated price and updates the level atomically.
-- `race_select_car(playerCarId)`: selects only a car owned by the signed-in user.
-- `race_record_result(...)`: stores client-submitted results as unverified. It does not award credits or qualify results for leaderboards.
-
-The database tables have RLS enabled. Economy-changing operations are exposed only through authenticated Postgres RPC functions that derive the player ID from `auth.uid()`. The browser uses the Supabase publishable key only; no service-role key is exposed. The race economy ledger is append-only.
-
-### Supabase project and deployment configuration
-
-Vercel has been configured with these browser-safe build variables for Production, Preview and Development:
-
-- `VITE_SUPABASE_URL`
-- `VITE_SUPABASE_ANON_KEY` (publishable key)
-
-These values are safe to ship in the browser when paired with the database grants and RLS policies. Never set a service-role or secret API key as a `VITE_*` variable.
-
-To run the client locally, copy `.env.example` to `.env.local`, fill in the two Vite Supabase values, then run `npm install` and `npm run dev`. The account form uses Supabase email/password authentication; if email confirmation is enabled, confirm the email before signing in.
-
-### Database migrations
-
-The racing migrations are stored under `supabase/migrations/`. They were applied to the existing Supabase project and verified with a database query. The Supabase project also contains earlier open-world game migrations that are not recreated by these two racing-only migration files.
+`server.js`, the Prisma schema and Dockerfile are retained from the earlier standalone Node API experiment. The current Vite racing client does not call that API. Supabase Auth and the database RPC functions above are the active account and garage backend.
