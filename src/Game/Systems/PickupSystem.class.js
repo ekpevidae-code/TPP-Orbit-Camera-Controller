@@ -98,7 +98,6 @@ export default class PickupSystem {
         cloud.inventory = inventory;
         this.game.playerCloudState = cloud;
         pickup.pendingActionId = null;
-        pickup.pendingActionId = null;
         pickup.available = false;
         pickup.root.visible = false;
         pickup.respawn = 45;
