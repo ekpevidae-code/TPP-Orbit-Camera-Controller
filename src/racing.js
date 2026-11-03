@@ -325,9 +325,10 @@ accountForm?.addEventListener('submit',async event=>{
 });
 document.querySelector('#account-register')?.addEventListener('click',async()=>{
   try{
-    await registerAccount({email:document.querySelector('#account-email').value,username:document.querySelector('#account-username').value,password:document.querySelector('#account-password').value});
+    const registration=await registerAccount({email:document.querySelector('#account-email').value,username:document.querySelector('#account-username').value,password:document.querySelector('#account-password').value});
+    if(registration.needsEmailConfirmation){setAccountMessage('Check your email and confirm the account, then sign in here.');return;}
     await refreshOnlineGarage();
-    setAccountMessage('Account created. Your starter wallet is ready.');
+    setAccountMessage('Account created. Your starter garage and wallet are ready.');
   }catch(error){setAccountMessage(error.message,true);}
 });
 accountLogout?.addEventListener('click',()=>{logoutAccount();state.serverPlayerCarId=null;accountWallet.textContent='Signed out';accountLogout.classList.add('hidden');setAccountMessage('Signed out. Local practice remains available.');});
