@@ -182,6 +182,10 @@ export default class GameSessionController {
     if (vehicle) {
       vehicle.isOwned = (state.vehicles || []).some((entry) => entry.vehicle_code === vehicle.vehicleCode);
       vehicle.car.visible = vehicle.isOwned;
+      if (!vehicle.isOwned) {
+        vehicle.isDriving = false;
+        if (player) player.visible = true;
+      }
       vehicle.updatePrompt();
     }
     const combat = this.game.world?.combat;
