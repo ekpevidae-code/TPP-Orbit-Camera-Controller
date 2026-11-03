@@ -37,13 +37,37 @@ export class VehiclePhysicsEngine{
 export class NitroController{
  constructor(capacity=100){this.capacity=capacity;this.value=capacity;this.mode='READY';this.lastTap=-Infinity;this.shockwaveTime=0;this.perfectTime=0;}
  add(amount){this.value=THREE.MathUtils.clamp(this.value+amount,0,this.capacity);}
- tap(now,active){const gap=now-this.lastTap;let result='STANDARD';
-  if(this.value===this.capacity&&gap<0.36){this.value=0;this.mode='SHOCKWAVE';this.shockwaveTime=3.6;result='SHOCKWAVE';}
-  else if(this.value>=68&&this.value<=90&&gap<0.42){this.value=Math.max(0,this.value-30);this.mode='PERFECT';this.perfectTime=2.0;result='PERFECT';}
-  else if(this.value>0){this.mode='STANDARD';result='STANDARD';}
-  this.lastTap=now;return result;
+ tap(now,active){
+  if(!active||this.value<=0)return 'UNAVAILABLE';
+  const gap=now-this.lastTap;
+  let result='STANDARD';
+  if(this.value>=this.capacity*0.98&&gap>=0&&gap<=0.36){
+   this.value=0;this.mode='SHOCKWAVE';this.shockwaveTime=3.6;result='SHOCKWAVE';
+  }else if(this.value>=68&&this.value<=90&&gap>=0&&gap<=0.42){
+   this.value=Math.max(0,this.value-30);this.mode='PERFECT';this.perfectTime=2.0;result='PERFECT';
+  }else if(this.value>0){
+   this.mode='STANDARD';result='STANDARD';
+  }
+  this.lastTap=now;
+  return result;
  }
- step(dt,using){if(using)this.value=Math.max(0,this.value-(this.mode==='PERFECT'?18:23)*dt);if(this.shockwaveTime>0)this.shockwaveTime=Math.max(0,this.shockwaveTime-dt);if(this.perfectTime>0)this.perfectTime=Math.max(0,this.perfectTime-dt);if(!this.shockwaveTime&&!this.perfectTime&&this.value<=0)this.mode='EMPTY';return {value:this.value,shockwave:this.shockwaveTime>0,perfect:this.perfectTime>0};}
+ step(dt,using){
+  const safeDt=THREE.MathUtils.clamp(dt,0,0.1);
+  if(this.shockwaveTime>0)this.shockwaveTime=Math.max(0,this.shockwaveTime-safeDt);
+  if(this.perfectTime>0)this.perfectTime=Math.max(0,this.perfectTime-safeDt);
+  const specialActive=this.shockwaveTime>0||this.perfectTime>0;
+  if(using&&this.value>0)this.value=Math.max(0,this.value-(this.shockwaveTime>0?24:this.perfectTime>0?18:23)*safeDt);
+  else if(!specialActive)this.add(2.4*safeDt);
+  if(this.value<=0)this.mode='EMPTY';
+  else if(this.shockwaveTime>0)this.mode='SHOCKWAVE';
+  else if(this.perfectTime>0)this.mode='PERFECT';
+  else this.mode=using?'STANDARD':'READY';
+  return {value:this.value,shockwave:this.shockwaveTime>0,perfect:this.perfectTime>0};
+ }
+ reset(capacity=this.capacity){
+  this.capacity=capacity;this.value=capacity;this.mode='READY';this.lastTap=-Infinity;
+  this.shockwaveTime=0;this.perfectTime=0;
+ }
 }
 export class AABBCollisionSystem{
  constructor(){this.playerBox=new THREE.Box3();this.otherBox=new THREE.Box3();this.playerSize=new THREE.Vector3(2.2,1.5,4.2);this.otherSize=new THREE.Vector3(2.1,1.5,4.0);}
