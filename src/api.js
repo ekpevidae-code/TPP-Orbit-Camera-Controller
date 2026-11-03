@@ -1,6 +1,15 @@
 const SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL || '').replace(/\/$/, '');
 const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 const SESSION_KEY = 'velocity-run.supabase-session';
+// Always send production sign-up confirmations back to the live Vercel app.
+// Local development can still use its own origin when running on localhost.
+const PRODUCTION_AUTH_REDIRECT = 'https://realistic-open-world-game-git-racing-prototype-ekpevidae-code.vercel.app';
+function getAuthRedirectUrl() {
+  const host = window.location.hostname;
+  return host === 'localhost' || host === '127.0.0.1'
+    ? window.location.origin
+    : PRODUCTION_AUTH_REDIRECT;
+}
 
 function readSavedSession() {
   try { return JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); }
@@ -91,7 +100,7 @@ async function supabaseRequest(path, { method = 'GET', body, auth = true, retry 
 }
 
 export async function registerAccount({ email, username, password }) {
-  const result = await supabaseRequest('/auth/v1/signup?redirect_to=' + encodeURIComponent(window.location.origin), {
+  const result = await supabaseRequest('/auth/v1/signup?redirect_to=' + encodeURIComponent(getAuthRedirectUrl()), {
     method: 'POST', auth: false,
     body: { email, password, data: { username: username.trim() } }
   });
