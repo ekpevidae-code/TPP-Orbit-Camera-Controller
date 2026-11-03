@@ -8,6 +8,7 @@ export default class InputManager {
       sprint: false,
       jump: false,
       interact: false,
+      brake: false,
     };
     this.mapping = {
       87: 'forward',
