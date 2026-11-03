@@ -57,7 +57,7 @@ The racing migrations are checked into `supabase/migrations/` and have been appl
 
 1. `20261103221454_velocity_run_racing_garage.sql`
 2. `20261103221522_race_economy_idempotency_and_indexes.sql`
-3. `20261103221600_race_selected_car_transaction_lock.sql`
+3. `20261103221734_race_selected_car_transaction_lock.sql`
 
 The Supabase project also contains earlier open-world-game migrations that are not recreated by these racing-only files.
 
