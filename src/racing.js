@@ -271,10 +271,31 @@ function setPause(value) {
 
 function bindHold(id, key) {
   const el = document.getElementById(id);
-  const down = e => { e.preventDefault(); state[key] = true; el.classList.add('pressed'); if (key === 'gas') startRace(); };
-  const up = e => { e.preventDefault(); state[key] = false; el.classList.remove('pressed'); };
-  el.addEventListener('pointerdown', down);
-  ['pointerup','pointercancel','pointerleave'].forEach(ev => el.addEventListener(ev, up));
+  if (!el) return;
+  let activePointer = null;
+  const release = () => {
+    state[key] = false;
+    el.classList.remove('pressed');
+    activePointer = null;
+  };
+  el.addEventListener('pointerdown', event => {
+    event.preventDefault();
+    if (activePointer !== null) return;
+    activePointer = event.pointerId;
+    try { el.setPointerCapture(event.pointerId); } catch {}
+    state[key] = true;
+    el.classList.add('pressed');
+    if (key === 'gas') startRace();
+  });
+  const end = event => {
+    if (activePointer !== null && event.pointerId !== activePointer) return;
+    event.preventDefault();
+    release();
+  };
+  el.addEventListener('pointerup', end);
+  el.addEventListener('pointercancel', end);
+  el.addEventListener('lostpointercapture', release);
+  window.addEventListener('blur', release);
 }
 bindHold('gas', 'gas');
 bindHold('brake', 'brake');
@@ -304,6 +325,12 @@ window.addEventListener('keydown', e => {
   if (e.key === ' ' || e.key.toLowerCase() === 'shift') state.nitroOn = true;
   if(e.key.toLowerCase()==='e'&&state.airborne>0){state.stuntSpinRate=state.stuntSpinRate||Math.PI*5;state.stuntDone=true;}
   if (e.key === 'Escape') setPause(!state.paused);
+});
+window.addEventListener('blur', () => {
+  for (const key of ['gas', 'brake', 'left', 'right']) state[key] = false;
+  document.querySelectorAll('.control.pressed').forEach(button => button.classList.remove('pressed'));
+  state.nitroOn = false;
+  nitroButton.classList.remove('pressed');
 });
 window.addEventListener('keyup', e => {
   if (e.key === 'ArrowUp' || e.key.toLowerCase() === 'w') state.gas = false;
