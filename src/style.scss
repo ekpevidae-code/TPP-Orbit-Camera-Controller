@@ -893,3 +893,40 @@ button { font: inherit; -webkit-tap-highlight-color:transparent; }
   #mini-map-wrap { top:54px; width:84px; height:84px; }
   .gas-btn,.brake-btn { bottom:max(14px,env(safe-area-inset-bottom)); }
 }
+
+/* Player account panel */
+.game-account-panel {
+  position:fixed; z-index:1600; top:max(14px,env(safe-area-inset-top));
+  left:50%; transform:translateX(-50%); width:min(340px,calc(100vw - 28px));
+  box-sizing:border-box; padding:14px; border:1px solid rgba(255,255,255,.2);
+  border-radius:16px; background:rgba(10,19,27,.96); color:#f5f8fa;
+  box-shadow:0 14px 44px rgba(0,0,0,.4); font-family:Arial,sans-serif;
+  backdrop-filter:blur(14px);
+}
+.game-account-panel.collapsed {
+  width:auto; left:auto; right:max(14px,env(safe-area-inset-right));
+  transform:none; padding:8px 11px;
+}
+.game-account-panel.collapsed .game-account-form,
+.game-account-panel.collapsed .game-account-foot,
+.game-account-panel.collapsed .game-account-close { display:none; }
+.game-account-head { display:flex; align-items:center; justify-content:space-between; gap:12px; cursor:pointer; }
+.game-account-kicker { display:block; color:#91b8ad; font-size:9px; font-weight:800; letter-spacing:2px; }
+.game-account-title { display:block; margin-top:3px; font-size:16px; }
+.game-account-close { border:0; background:transparent; color:#dce8ed; font-size:23px; padding:0 5px; }
+.game-account-status { margin:10px 0; color:#b9c9d0; font-size:11px; line-height:1.4; }
+.game-account-status.error { color:#ff9d91; }
+.game-account-form { display:grid; gap:8px; }
+.game-account-form input { width:100%; box-sizing:border-box; min-height:40px; padding:0 11px; border:1px solid rgba(255,255,255,.16); border-radius:9px; background:#172631; color:#fff; font-size:13px; }
+.game-account-actions { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.game-account-actions button,.game-account-connected button { min-height:39px; border:0; border-radius:9px; font-size:10px; font-weight:900; letter-spacing:.5px; }
+.game-account-login,.game-account-save { background:#b9e3d1; color:#071510; }
+.game-account-signup { background:#243c48; color:#fff; }
+.game-account-connected { display:flex; gap:8px; }
+.game-account-connected[hidden],.game-account-form[hidden] { display:none; }
+.game-account-logout { background:#39434a; color:#fff; }
+.game-account-foot { margin-top:10px; color:#81939d; font-size:9px; line-height:1.4; }
+.game-account-panel.connected.collapsed .game-account-status { display:block; margin:4px 0 0; }
+@media (orientation:portrait) and (max-width:900px) {
+  .game-account-panel { top:56px; }
+}
