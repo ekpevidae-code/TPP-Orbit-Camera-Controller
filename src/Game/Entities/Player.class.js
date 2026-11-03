@@ -39,7 +39,29 @@ export default class Player {
   }
 
   setModelInstance() {
-    this.player = this.modelResource.scene;
+    if (this.modelResource && this.modelResource.scene) {
+      this.player = this.modelResource.scene;
+    } else {
+      this.player = new THREE.Group();
+      this.player.name = 'Fallback Player';
+      const skin = new THREE.MeshStandardMaterial({ color: 0xb9825b, roughness: 0.9 });
+      const shirt = new THREE.MeshStandardMaterial({ color: 0x263b55, roughness: 0.95 });
+      const trousers = new THREE.MeshStandardMaterial({ color: 0x252a32, roughness: 1 });
+      const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.29, 0.62, 4, 8), shirt);
+      body.position.y = 1.05;
+      this.player.add(body);
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.19, 10, 8), skin);
+      head.position.y = 1.62;
+      this.player.add(head);
+      for (const x of [-0.16, 0.16]) {
+        const leg = new THREE.Mesh(new THREE.CapsuleGeometry(0.09, 0.48, 3, 6), trousers);
+        leg.position.set(x, 0.43, 0);
+        this.player.add(leg);
+        const arm = new THREE.Mesh(new THREE.CapsuleGeometry(0.075, 0.42, 3, 6), skin);
+        arm.position.set(x * 2.25, 1.02, 0);
+        this.player.add(arm);
+      }
+    }
     this.player.position.set(0, 0, 0);
     this.player.scale.setScalar(1);
     this.outfitMixers = [];
@@ -93,7 +115,7 @@ export default class Player {
     this.animation.actions = {};
 
     const clipsByName = new Map(
-      (this.modelResource.animations || []).map((clip) => [clip.name.toLowerCase(), clip])
+      ((this.modelResource && this.modelResource.animations) || []).map((clip) => [clip.name.toLowerCase(), clip])
     );
     const animationMap = {
       idle: 'idle',
