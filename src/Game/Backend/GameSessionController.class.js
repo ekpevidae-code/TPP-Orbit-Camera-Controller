@@ -145,6 +145,7 @@ export default class GameSessionController {
     await this.backend.bootstrap("Player");
     const state = await this.backend.load();
     this.applyLoadedState(state);
+    this.playtimeSeconds = Math.max(0, Number(state.save?.playtime_seconds || 0));
     this.connected = true;
     this.form.hidden = true;
     this.connectedActions.hidden = false;
@@ -166,6 +167,11 @@ export default class GameSessionController {
       vehicle.car.position.set(...checkpoint.vehiclePosition);
     }
     if (vehicle?.car && Number.isFinite(checkpoint.vehicleRotationY)) vehicle.car.rotation.y = checkpoint.vehicleRotationY;
+    if (vehicle && typeof checkpoint.isDriving === "boolean") {
+      vehicle.isDriving = checkpoint.isDriving;
+      if (player) player.visible = !checkpoint.isDriving;
+      vehicle.updatePrompt();
+    }
 
     const combat = this.game.world?.combat;
     if (combat) {
@@ -190,6 +196,7 @@ export default class GameSessionController {
       playerRotationY: player?.rotation.y || 0,
       vehiclePosition: vehicle?.car ? [vehicle.car.position.x, vehicle.car.position.y, vehicle.car.position.z] : [0, 0, 0],
       vehicleRotationY: vehicle?.car?.rotation.y || 0,
+      isDriving: Boolean(vehicle?.isDriving),
       ammo: combat?.ammo ?? 12,
       reserveAmmo: combat?.reserveAmmo ?? 60,
     };
