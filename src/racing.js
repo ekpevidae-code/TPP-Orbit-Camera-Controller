@@ -74,17 +74,34 @@ for (let x of [-roadWidth / 2, roadWidth / 2]) {
   edge.position.set(x, 0.055, -roadLength / 2 + 25);
   road.add(edge);
 }
-for (let z = 10; z > -roadLength + 15; z -= 12) {
-  const dash = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.025, 5.2), mats.line);
-  dash.position.set(0, 0.025, z);
-  road.add(dash);
+const dashCount = Math.ceil((roadLength - 25) / 12);
+const dashInstances = new THREE.InstancedMesh(new THREE.BoxGeometry(0.16, 0.025, 5.2), mats.line, dashCount);
+const marker = new THREE.Object3D();
+for (let i = 0; i < dashCount; i++) {
+  marker.position.set(0, 0.025, 10 - i * 12);
+  marker.updateMatrix();
+  dashInstances.setMatrixAt(i, marker.matrix);
 }
-for (let side of [-1, 1]) {
-  for (let z = 0; z > -roadLength + 15; z -= 22) {
-    const rail = box(road, 0.22, 0.65, 19, mats.white, side * 9.15, 0.37, z, false);
-    rail.material = new THREE.MeshStandardMaterial({ color: (Math.abs(z / 22) % 2 < 1) ? 0xe5e5e5 : 0xb83a31, roughness: 0.7 });
+dashInstances.instanceMatrix.needsUpdate = true;
+road.add(dashInstances);
+const railCount = Math.ceil(roadLength / 22);
+const railWhite = new THREE.InstancedMesh(new THREE.BoxGeometry(0.22, 0.65, 19), new THREE.MeshStandardMaterial({color:0xe5e5e5,roughness:0.7}), railCount * 2);
+const railRed = new THREE.InstancedMesh(new THREE.BoxGeometry(0.22, 0.65, 19), new THREE.MeshStandardMaterial({color:0xb83a31,roughness:0.7}), railCount * 2);
+let whiteIndex = 0;
+let redIndex = 0;
+for (const side of [-1, 1]) {
+  for (let i = 0; i < railCount; i++) {
+    marker.position.set(side * 9.15, 0.37, -i * 22);
+    marker.updateMatrix();
+    if (i % 2 === 0) railWhite.setMatrixAt(whiteIndex++, marker.matrix);
+    else railRed.setMatrixAt(redIndex++, marker.matrix);
   }
 }
+railWhite.count = whiteIndex;
+railRed.count = redIndex;
+railWhite.instanceMatrix.needsUpdate = true;
+railRed.instanceMatrix.needsUpdate = true;
+road.add(railWhite, railRed);
 const startLine = new THREE.Mesh(new THREE.PlaneGeometry(roadWidth, 1.5), mats.line);
 startLine.rotation.x = -Math.PI / 2;
 startLine.position.set(0, 0.035, 6);
