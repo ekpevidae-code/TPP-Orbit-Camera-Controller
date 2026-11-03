@@ -10,7 +10,7 @@ export default class MissionSystem {
     this.radius = 4;
     this.rewardCash = 250;
     this.status = "available";
-    this.busy = false;
+    this.busy = false;\n    this.startActionId = null;\n    this.completeActionId = null;
     this.createCheckpoint();
     this.createHud();
     this.render();
@@ -113,7 +113,7 @@ export default class MissionSystem {
     this.button.disabled = true;
     this.setMessage("Starting mission…");
     try {
-      await this.game.sessionController.backend.startMission(this.code);
+      await this.game.sessionController.backend.startMission(this.code, this.startActionId || (this.startActionId = crypto.randomUUID()));\n      this.startActionId = null;
       this.status = "active";
       this.render();
     } catch (error) {
@@ -129,7 +129,7 @@ export default class MissionSystem {
     this.busy = true;
     this.setMessage("Saving mission result…");
     try {
-      const result = await this.game.sessionController.backend.completeMission(this.code);
+      const result = await this.game.sessionController.backend.completeMission(this.code, this.completeActionId || (this.completeActionId = crypto.randomUUID()));\n      this.completeActionId = null;
       this.status = "completed";
       this.marker.visible = false;
       const cloud = this.game.playerCloudState || {};
