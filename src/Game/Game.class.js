@@ -22,6 +22,7 @@ export default class Game {
      * Debug handler
      */
     this.isDebugMode = isDebugMode;
+    this.isPaused = false;
     if (this.isDebugMode) {
       this.debug = new DebugGUI();
     }
@@ -81,8 +82,10 @@ export default class Game {
   }
 
   update() {
-    this.camera.update();
-    this.world.update();
+    if (!this.isPaused) {
+      this.camera.update();
+      this.world.update();
+    }
     this.renderer.update();
     this.uiController.update();
   }
