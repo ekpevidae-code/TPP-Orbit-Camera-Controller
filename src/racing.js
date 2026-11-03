@@ -323,7 +323,7 @@ function animate() {
     ui.speed.textContent = String(Math.round(state.speed * 3.2)).padStart(3, '0');
     ui.distance.innerHTML = state.distance.toFixed(1) + ' <small>KM</small>';
     ui.progress.style.width = Math.min(100, state.distance / totalDistance * 100) + '%';
-    const placesBehind = rivals.filter(r => r.car.position.z > player.position.z).length;
+    const placesBehind = rivals.filter(r => r.car.position.z < player.position.z).length;
     const place = Math.min(4, placesBehind + 1);
     const suffix = place === 1 ? 'ST' : place === 2 ? 'ND' : place === 3 ? 'RD' : 'TH';
     document.querySelector('#position').innerHTML = place + '<span>' + suffix + '</span>';
