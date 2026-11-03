@@ -235,14 +235,12 @@ resize();
 let audioContext=null,engineOsc=null,engineGain=null,tireOsc=null,tireGain=null;
 function initAudio(){if(audioContext)return;const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;audioContext=new AC();engineOsc=audioContext.createOscillator();engineGain=audioContext.createGain();engineOsc.type='sawtooth';engineOsc.frequency.value=55;engineGain.gain.value=0.0001;engineOsc.connect(engineGain).connect(audioContext.destination);engineOsc.start();tireOsc=audioContext.createOscillator();tireGain=audioContext.createGain();tireOsc.type='triangle';tireOsc.frequency.value=420;tireGain.gain.value=0.0001;tireOsc.connect(tireGain).connect(audioContext.destination);tireOsc.start();}
 function startRace() {
+  if(gameStates.current===GAME_STATES.RACING||gameStates.current===GAME_STATES.COUNTDOWN)return;
+  gameStates.transition(GAME_STATES.LOADING);
   initAudio();if(audioContext?.state==='suspended')audioContext.resume();
   ui.garage?.classList.add('hidden');
   if (state.finished) resetRace();
-  state.running = true;
-  state.paused = false;
-  ui.pause.classList.add('hidden');
-  ui.message.style.opacity = '0';
-  ui.state.textContent = 'RACE IN PROGRESS';
+  state.running=true;state.paused=false;ui.pause.classList.add('hidden');countdownRemaining=2.8;gameStates.transition(GAME_STATES.COUNTDOWN);ui.message.style.opacity='1';ui.message.querySelector('strong').textContent='3';ui.message.querySelector('span').textContent='GET READY';
 }
 function resetRace() {
   state.speed = 0; player.speed=0;nitroSystem.value=VEHICLES[state.selectedCar||0].nitro;gameStates.transition(GAME_STATES.GARAGE); state.steer = 0; state.drift = 0; state.nitro = 100; state.distance = 0; state.driftScore = 0; state.driftTime = 0; state.driftToastTime = 0; state.airborne=0;state.stuntSpin=0;state.stuntRoll=0;state.stuntDone=false;state.nitroMode=0;state.shockwave=0;state.perfect=0;state.rampIndex=0;
@@ -258,7 +256,7 @@ function resetRace() {
 }
 function setPause(value) {
   if (!state.running && !state.paused) return;
-  state.paused = value;
+  state.paused = value;gameStates.transition(value?GAME_STATES.PAUSED:GAME_STATES.RACING);
   ui.pause.classList.toggle('hidden', !value);
   if (value) ui.state.textContent = 'PAUSED';
   else ui.state.textContent = 'RACE IN PROGRESS';
@@ -306,10 +304,10 @@ window.addEventListener('keyup', e => {
   if (e.key === ' ' || e.key.toLowerCase() === 'shift') state.nitroOn = false;
 });
 
-function animate() {
-  requestAnimationFrame(animate);
-  const dt = Math.min(clock.getDelta(), 0.04);
-  if (state.running && !state.paused && !state.finished) {
+function animate(dtOverride) {
+  const dt=dtOverride??Math.min(clock.getDelta(),0.04);
+  if(gameStates.current===GAME_STATES.COUNTDOWN){countdownRemaining-=dt;ui.message.querySelector('strong').textContent=countdownRemaining>1.8?'3':countdownRemaining>0.9?'2':countdownRemaining>0?'1':'GO!';if(countdownRemaining<=0){gameStates.transition(GAME_STATES.RACING);ui.message.style.opacity='0';}}
+  if (gameStates.current===GAME_STATES.RACING && state.running && !state.paused && !state.finished) {
     const steerInput=(state.right?1:0)-(state.left?1:0);
     state.steer=THREE.MathUtils.damp(state.steer,steerInput,vehiclePhysics.stats.handling*2.2,dt);
     const nitroState=nitroSystem.step(dt,state.nitroOn&&state.speed>12);
@@ -332,8 +330,7 @@ function animate() {
       state.driftToastTime = Math.max(0, state.driftToastTime - dt);
       if (!state.driftToastTime) ui.driftToast.classList.remove('show');
     }
-    player.position.x += (state.steer * speedFactor * 7.2 + state.drift * 3.4) * dt;
-    player.position.x = clamp(player.position.x, -6.7, 6.7);
+    player.position.x+=(physics.lateral*0.22*speedFactor+state.drift*3.4)*dt;player.position.x=clamp(player.position.x,-7.4,7.4);if(collisions.guardrail(player.position.x)){player.position.x=clamp(player.position.x,-7.4,7.4);player.speed*=0.82;state.speed=player.speed;}
     player.position.z -= state.speed * dt * 0.34;
     if(state.airborne>0){state.airborne=Math.max(0,state.airborne-dt);state.stuntSpin+=state.stuntSpinRate*dt;player.position.y=0.8+Math.sin((1.1-state.airborne)/1.1*Math.PI)*2.5;state.stuntRoll+=state.steer*dt*4.2;if(state.airborne===0){player.position.y=0;if(state.stuntDone){nitroSystem.add(28);state.nitro=nitroSystem.value;state.driftScore+=500;ui.nitroLabel.textContent='LANDING +NITRO';}state.stuntDone=false;state.stuntSpin=0;state.stuntSpinRate=0;}}
     const stuntAt=[0.42,1.18,2.05];if(state.rampIndex<stuntAt.length&&state.distance>=stuntAt[state.rampIndex]){state.airborne=1.1;state.stuntDone=false;state.stuntRoll=0;state.stuntSpin=0;state.stuntSpinRate=0;state.rampIndex++;arcadeFX.sparks();}
@@ -341,15 +338,12 @@ function animate() {
     player.rotation.z = (state.airborne>0?state.stuntRoll:0) - state.steer * 0.055 - state.drift * 0.09;
     player.userData.wheels.forEach(w => { w.rotation.x += state.speed * dt * 0.16; if (w.userData.front) w.rotation.y = -state.steer * 0.25; });
     state.distance += state.speed * dt / 3600 * 1.65;
-    rivals.forEach((r, i) => {
-      r.car.position.z += state.speed * dt * 0.34 - (r.speed * 11 * dt);
-      if (r.car.position.z > 13) r.car.position.z = -110 - Math.random() * 65;
-      r.car.position.x = r.x + Math.sin(clock.elapsedTime * 0.35 + i) * 0.45;
-    });
+    aiControllers.forEach(ai=>ai.step(dt,state.speed,player.position.x));
     state.nearMissCooldown=Math.max(0,state.nearMissCooldown-dt);
     traffic.forEach((t,i)=>{t.car.position.z+=state.speed*dt*0.34-(t.speed*11*dt);if(t.car.position.z>13)t.car.position.z=-260-Math.random()*160;t.car.position.x=t.x+Math.sin(clock.elapsedTime*0.22+i)*0.28;const gap=Math.abs(t.car.position.z-player.position.z);const laneGap=Math.abs(t.car.position.x-player.position.x);if(gap<3.2&&laneGap<2.3&&laneGap>1.15&&state.nearMissCooldown===0){nitroSystem.add(12);state.nitro=nitroSystem.value;state.nearMissCooldown=1.2;arcadeFX.sparks();ui.nitroLabel.textContent='NEAR MISS +';}});
 
-    const collision=collisions.hit(player,traffic.map(t=>t.car));if(collision&&!nitroState.shockwave&&crashTime<=0){player.speed*=0.55;state.speed=player.speed;crashTime=0.8;ui.nitroLabel.textContent='CRASH!';}crashTime=Math.max(0,crashTime-dt);\n    camera.fov=THREE.MathUtils.damp(camera.fov,66+Math.max(0,state.speed-25)*0.42+(usingNitro?8:0),4,dt);camera.updateProjectionMatrix();
+    const collision=collisions.hit(player,traffic.map(t=>t.car));if(collision&&!nitroState.shockwave&&crashTime<=0){player.speed*=0.55;state.speed=player.speed;crashTime=0.8;ui.nitroLabel.textContent='CRASH!';}crashTime=Math.max(0,crashTime-dt);\n    const collision=collisions.hit(player,traffic.map(t=>t.car));if(collision&&!nitroState.shockwave&&crashTime<=0){player.speed*=0.55;state.speed=player.speed;crashTime=0.8;ui.nitroLabel.textContent='CRASH!';}crashTime=Math.max(0,crashTime-dt);
+    camera.fov=THREE.MathUtils.damp(camera.fov,66+Math.max(0,state.speed-25)*0.42+(usingNitro?8:0),4,dt);camera.updateProjectionMatrix();
     const targetCam = new THREE.Vector3(player.position.x * 0.48, 5.4 + state.speed * 0.018, player.position.z + 10.5+state.speed*0.035);
     camera.position.lerp(targetCam, 1 - Math.pow(0.001, dt));
     camera.lookAt(player.position.x * 0.2, 0.8, player.position.z - 9);
@@ -364,7 +358,7 @@ function animate() {
     const suffix = place === 1 ? 'ST' : place === 2 ? 'ND' : place === 3 ? 'RD' : 'TH';
     document.querySelector('#position').innerHTML = place + '<span>' + suffix + '</span>';
     if (state.distance >= totalDistance) {
-      state.finished = true; state.running = false; state.speed = 0;gameStates.transition(GAME_STATES.GAME_OVER);
+      state.finished=true;state.running=false;state.speed=0;gameStates.transition(GAME_STATES.GAME_OVER);gameStates.transition(GAME_STATES.GAME_OVER);
       ui.finishTitle.textContent = 'FINISH!';
       ui.finishCopy.textContent = 'You completed the 3 km sprint. Run it again and beat your time.';
       ui.finish.classList.remove('hidden');
@@ -379,4 +373,5 @@ function animate() {
 }
 camera.position.set(0, 5.5, 14);
 camera.lookAt(0, 0.8, -8);
-const gameLoop=new GameLoop(dt=>animate(dt),()=>{});\ngameLoop.start();
+const gameLoop=new GameLoop(dt=>animate(dt),()=>{});
+gameLoop.start();
