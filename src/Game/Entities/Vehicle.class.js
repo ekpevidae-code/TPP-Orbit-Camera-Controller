@@ -168,9 +168,17 @@ export default class Vehicle {
     }
 
     const dt = Math.min(this.game.time.delta || 0, 0.05);
-    if (actions.forward) this.speed = Math.min(this.maxSpeed, this.speed + this.acceleration * dt);
-    else if (actions.backward) this.speed = Math.max(-this.reverseSpeed, this.speed - this.brakePower * dt);
-    else this.speed *= Math.exp(-1.7 * dt);
+    if (actions.brake) {
+      // Dedicated brake smoothly reduces forward or reverse speed to zero.
+      if (this.speed > 0) this.speed = Math.max(0, this.speed - this.brakePower * dt);
+      else this.speed = Math.min(0, this.speed + this.brakePower * dt);
+    } else if (actions.forward) {
+      this.speed = Math.min(this.maxSpeed, this.speed + this.acceleration * dt);
+    } else if (actions.backward) {
+      this.speed = Math.max(-this.reverseSpeed, this.speed - this.acceleration * dt);
+    } else {
+      this.speed *= Math.exp(-1.7 * dt);
+    }
 
     if (Math.abs(this.speed) > 0.15) {
       const steering = (actions.left ? 1 : 0) - (actions.right ? 1 : 0);
