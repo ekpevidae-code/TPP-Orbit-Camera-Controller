@@ -1,0 +1,143 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum CarClass {
+  D
+  C
+  B
+  A
+  S
+}
+
+enum Currency {
+  CREDITS
+  TOKENS
+}
+
+enum LedgerReason {
+  RACE_REWARD
+  DAILY_REWARD
+  CAR_PURCHASE
+  CAR_UPGRADE
+  REFUND
+  ADMIN_ADJUSTMENT
+}
+
+enum RaceStatus {
+  COMPLETED
+  DISQUALIFIED
+  ABANDONED
+}
+
+model User {
+  id          String           @id @default(uuid()) @db.Uuid
+  email       String           @unique
+  passwordHash String
+  displayName String           @unique
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  wallet      Wallet?
+  cars        OwnedCar[]
+  sessions    RefreshSession[]
+  raceResults RaceResult[]
+  ledger      LedgerEntry[]
+}
+
+model Wallet {
+  userId    String   @id @db.Uuid
+  credits   BigInt   @default(0)
+  tokens    BigInt   @default(0)
+  version   Int      @default(0)
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model LedgerEntry {
+  id             String       @id @default(uuid()) @db.Uuid
+  userId         String       @db.Uuid
+  currency       Currency
+  amount         BigInt
+  reason         LedgerReason
+  idempotencyKey String
+  referenceId    String?
+  balanceAfter   BigInt
+  metadata       Json?
+  createdAt      DateTime     @default(now())
+  user           User         @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@unique([userId, idempotencyKey])
+  @@index([userId, createdAt])
+  @@index([reason, createdAt])
+}
+
+model CarDefinition {
+  id              String    @id
+  name            String
+  carClass        CarClass
+  baseTopSpeed    Float
+  baseAcceleration Float
+  baseHandling    Float
+  baseNitro       Float
+  purchaseCredits BigInt
+  purchaseTokens  BigInt    @default(0)
+  active          Boolean   @default(true)
+  ownedCars       OwnedCar[]
+}
+
+model OwnedCar {
+  id           String        @id @default(uuid()) @db.Uuid
+  userId       String        @db.Uuid
+  definitionId String
+  level        Int           @default(1)
+  acceleration Int           @default(0)
+  topSpeed     Int           @default(0)
+  handling     Int           @default(0)
+  nitro        Int           @default(0)
+  paint        String        @default("#ffffff")
+  decalIds     String[]      @default([])
+  tuning       Json          @default("{}")
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  definition   CarDefinition @relation(fields: [definitionId], references: [id], onDelete: Restrict)
+
+  @@unique([userId, definitionId])
+  @@index([userId])
+}
+
+model RefreshSession {
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String    @db.Uuid
+  familyId   String    @db.Uuid
+  tokenHash  String    @unique
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  replacedBy String?
+  createdAt  DateTime  @default(now())
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, familyId])
+}
+
+model RaceResult {
+  id              String     @id @default(uuid()) @db.Uuid
+  userId          String     @db.Uuid
+  raceId          String
+  trackId         String
+  carDefinitionId String
+  finishTimeMs    Int
+  score           BigInt
+  status          RaceStatus
+  verified        Boolean    @default(false)
+  createdAt       DateTime   @default(now())
+  user            User       @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@unique([userId, raceId])
+  @@index([trackId, verified, finishTimeMs])
+}
