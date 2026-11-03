@@ -130,7 +130,7 @@ export default class Renderer {
 
   resize() {
     this.rendererInstance.setSize(this.sizes.width, this.sizes.height);
-    this.rendererInstance.setPixelRatio(this.sizes.pixelRatio);
+    this.rendererInstance.setPixelRatio(this.isMobileDevice ? Math.min(this.sizes.pixelRatio, 1.25) : this.sizes.pixelRatio);
   }
 
   update() {
