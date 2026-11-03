@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { createArcadeFX } from './arcade-systems.js';
 
 const canvas = document.querySelector('#race-canvas');
 const ui = {
@@ -12,7 +13,7 @@ const ui = {
   finishTitle: document.querySelector('#finish-title'),
   finishCopy: document.querySelector('#finish-copy'),
   driftScore: document.querySelector('#drift-score'),
-  driftToast: document.querySelector('#drift-toast')
+  driftToast: document.querySelector('#drift-toast'), nitroFill: document.querySelector('#nitro-fill'), nitroSegments: [...document.querySelectorAll('.nitro-segment')], nitroLabel: document.querySelector('#nitro-label'), garage: document.querySelector('#garage-layer')
 };
 
 const scene = new THREE.Scene();
@@ -197,12 +198,14 @@ const rivals = [
 ];
 rivals.forEach(r => r.car.position.set(r.x, 0, r.z));
 
-const state = { speed: 0, steer: 0, drift: 0, nitro: 100, distance: 0, driftScore: 0, driftTime: 0, driftToastTime: 0, running: false, paused: false, finished: false, gas: false, brake: false, left: false, right: false, nitroOn: false, last: 0, shake: 0 };
+const state = { speed: 0, steer: 0, drift: 0, nitro: 100, distance: 0, driftScore: 0, driftTime: 0, driftToastTime: 0, running: false, paused: false, finished: false, gas: false, brake: false, left: false, right: false, nitroOn: false, last: 0, shake: 0, airborne: 0, stuntSpin: 0, stuntRoll: 0, stuntDone: false, nitroTap: 0, nitroMode: 0, shockwave: 0, perfect: 0, rampIndex: 0, nearMissCooldown: 0, selectedCar: 0, upgrades: [0,0,0,0] };
+const arcadeFX = createArcadeFX(scene,camera,renderer,player);
 const totalDistance = 3.0;
 const clamp = THREE.MathUtils.clamp;
 const clock = new THREE.Clock();
 
 function resize() {
+  arcadeFX.resize();
   const w = canvas.clientWidth || innerWidth;
   const h = canvas.clientHeight || innerHeight;
   camera.aspect = w / h;
@@ -213,6 +216,7 @@ window.addEventListener('resize', resize);
 resize();
 
 function startRace() {
+  ui.garage?.classList.add('hidden');
   if (state.finished) resetRace();
   state.running = true;
   state.paused = false;
@@ -221,7 +225,7 @@ function startRace() {
   ui.state.textContent = 'RACE IN PROGRESS';
 }
 function resetRace() {
-  state.speed = 0; state.steer = 0; state.drift = 0; state.nitro = 100; state.distance = 0; state.driftScore = 0; state.driftTime = 0; state.driftToastTime = 0;
+  state.speed = 0; state.steer = 0; state.drift = 0; state.nitro = 100; state.distance = 0; state.driftScore = 0; state.driftTime = 0; state.driftToastTime = 0; state.airborne=0;state.stuntSpin=0;state.stuntRoll=0;state.stuntDone=false;state.nitroMode=0;state.shockwave=0;state.perfect=0;state.rampIndex=0;
   state.running = false; state.paused = false; state.finished = false;
   player.position.set(0, 0, 4); player.rotation.set(0, 0, 0);
   rivals.forEach((r, i) => { r.car.position.set(r.x, 0, -28 - i * 20); r.car.rotation.set(0, 0, 0); });
@@ -230,7 +234,7 @@ function resetRace() {
   ui.message.querySelector('span').textContent = 'Tap RACE to start your run';
   ui.state.textContent = 'READY TO RACE';
   ui.speed.textContent = '000'; ui.distance.innerHTML = '0.0 <small>KM</small>'; ui.progress.style.width = '0%';
-  ui.driftScore.textContent = '0'; ui.driftToast.classList.remove('show');
+  ui.driftScore.textContent = '0'; ui.driftToast.classList.remove('show'); ui.garage?.classList.remove('hidden');
 }
 function setPause(value) {
   if (!state.running && !state.paused) return;
@@ -252,6 +256,12 @@ bindHold('brake', 'brake');
 bindHold('left', 'left');
 bindHold('right', 'right');
 bindHold('nitro', 'nitroOn');
+const nitroButton=document.querySelector('#nitro');
+nitroButton.addEventListener('pointerdown',e=>{const now=performance.now();if(state.nitro>=99&&now-state.nitroTap<360){state.shockwave=3.2;state.nitro=0;state.nitroMode=2;state.speed=Math.min(96,state.speed+28);arcadeFX.sparks();ui.nitroLabel.textContent='SHOCKWAVE';}else if(state.nitro>=72&&state.nitro<=88){state.perfect=1.8;state.nitro=Math.max(0,state.nitro-35);state.speed=Math.min(88,state.speed+18);state.nitroMode=1;ui.nitroLabel.textContent='PERFECT';}state.nitroTap=now;});
+document.querySelector('#stunt')?.addEventListener('pointerdown',()=>{if(state.airborne>0){state.stuntSpin+=Math.PI*2;state.stuntDone=true;}});
+document.querySelector('#garage-start')?.addEventListener('click',startRace);
+document.querySelectorAll('[data-car]').forEach(btn=>btn.addEventListener('click',()=>{state.selectedCar=Number(btn.dataset.car);const colors=[0xf04d25,0x20a8d8,0xd6dce4];player.traverse(o=>{if(o.isMesh&&o.material?.metalness>0.5&&o.material.color) o.material.color.setHex(colors[state.selectedCar]);});document.querySelectorAll('[data-car]').forEach(b=>b.classList.toggle('selected',b===btn));}));
+document.querySelectorAll('[data-upgrade]').forEach(btn=>btn.addEventListener('click',()=>{const i=Number(btn.dataset.upgrade);state.upgrades[i]=Math.min(3,state.upgrades[i]+1);btn.querySelector('b').textContent='+'+state.upgrades[i];}));
 
 document.querySelector('#pause').addEventListener('click', () => setPause(!state.paused));
 document.querySelector('#resume').addEventListener('click', () => setPause(false));
@@ -265,6 +275,7 @@ window.addEventListener('keydown', e => {
   if (e.key === 'ArrowLeft' || e.key.toLowerCase() === 'a') state.left = true;
   if (e.key === 'ArrowRight' || e.key.toLowerCase() === 'd') state.right = true;
   if (e.key === ' ' || e.key.toLowerCase() === 'shift') state.nitroOn = true;
+  if(e.key.toLowerCase()==='e'&&state.airborne>0){state.stuntSpin+=Math.PI*2;state.stuntDone=true;}
   if (e.key === 'Escape') setPause(!state.paused);
 });
 window.addEventListener('keyup', e => {
@@ -282,7 +293,7 @@ function animate() {
     const accel = state.gas ? 26 : 0;
     const braking = state.brake ? 48 : 0;
     const usingNitro = state.nitroOn && state.nitro > 0 && state.speed > 12;
-    const maxSpeed = usingNitro ? 76 : 54;
+    const maxSpeed = state.shockwave>0?96:(usingNitro ? 76 : 54);
     state.speed += (accel - braking - (state.gas ? 0 : 5.5)) * dt;
     if (usingNitro) { state.speed = Math.min(maxSpeed, state.speed + 22 * dt); state.nitro = Math.max(0, state.nitro - 29 * dt); }
     else state.nitro = Math.min(100, state.nitro + 5 * dt);
@@ -315,14 +326,14 @@ function animate() {
       if (r.car.position.z > 13) r.car.position.z = -110 - Math.random() * 65;
       r.car.position.x = r.x + Math.sin(clock.elapsedTime * 0.35 + i) * 0.45;
     });
-    const targetCam = new THREE.Vector3(player.position.x * 0.48, 5.4 + state.speed * 0.012, player.position.z + 10.5);
+    camera.fov=THREE.MathUtils.damp(camera.fov,66+Math.max(0,state.speed-25)*0.42+(usingNitro?8:0),4,dt);camera.updateProjectionMatrix();\n    const targetCam = new THREE.Vector3(player.position.x * 0.48, 5.4 + state.speed * 0.018, player.position.z + 10.5+state.speed*0.035);
     camera.position.lerp(targetCam, 1 - Math.pow(0.001, dt));
     camera.lookAt(player.position.x * 0.2, 0.8, player.position.z - 9);
     state.shake = usingNitro ? 0.035 : 0;
     camera.position.x += (Math.random() - 0.5) * state.shake;
     ui.speed.textContent = String(Math.round(state.speed * 3.2)).padStart(3, '0');
     ui.distance.innerHTML = state.distance.toFixed(1) + ' <small>KM</small>';
-    ui.progress.style.width = Math.min(100, state.distance / totalDistance * 100) + '%';
+    ui.progress.style.width = Math.min(100, state.distance / totalDistance * 100) + '%';\n    ui.nitroFill.style.width=state.nitro+'%';ui.nitroSegments.forEach((s,i)=>s.classList.toggle('filled',state.nitro>(i*10)));
     const placesBehind = rivals.filter(r => r.car.position.z < player.position.z).length;
     const place = Math.min(4, placesBehind + 1);
     const suffix = place === 1 ? 'ST' : place === 2 ? 'ND' : place === 3 ? 'RD' : 'TH';
@@ -338,7 +349,7 @@ function animate() {
     camera.position.lerp(new THREE.Vector3(player.position.x * 0.48, 5.2, player.position.z + 10.5), 0.025);
     camera.lookAt(player.position.x * 0.2, 0.8, player.position.z - 9);
   }
-  renderer.render(scene, camera);
+  arcadeFX.render(dt,state.speed,Math.abs(state.drift)>0.08,state.nitroOn,state.shockwave>0);
 }
 camera.position.set(0, 5.5, 14);
 camera.lookAt(0, 0.8, -8);
