@@ -25,7 +25,7 @@ export class RaceHUD {
     const suffix = place === 1 ? 'ST' : place === 2 ? 'ND' : place === 3 ? 'RD' : 'TH';
     if (this.nodes.speed) this.nodes.speed.textContent = String(Math.round(speed * 3.2)).padStart(3, '0');
     if (this.nodes.distance) this.nodes.distance.innerHTML = distance.toFixed(1) + ' <small>KM</small>';
-    if (this.nodes.position) this.nodes.position.innerHTML = place + '<span>' + suffix + '</span>';
+    if (this.nodes.position) this.nodes.position.innerHTML = place + '<span>' + suffix + '</span><small style="font-size:9px;color:#aebbd0;margin-left:4px">/6 POS</small>';
     if (this.nodes.progress) this.nodes.progress.style.width = clamp(distance / Math.max(totalDistance, 0.01) * 100, 0, 100) + '%';
     if (this.nodes.nitroFill) this.nodes.nitroFill.style.width = percent + '%';
     if (this.nodes.nitroValue) this.nodes.nitroValue.textContent = Math.round(percent) + '%';
@@ -74,7 +74,7 @@ export class RaceHUD {
     const keyMap = {
       ArrowUp: ['gas', true], w: ['gas', true], ArrowDown: ['brake', true], s: ['brake', true],
       ArrowLeft: ['left', true], a: ['left', true], ArrowRight: ['right', true], d: ['right', true],
-      ' ': ['nitro', true], Shift: ['nitro', true], e: ['stunt', true], Escape: ['pause', true]
+      ' ': ['nitroOn', true], Shift: ['nitroOn', true], e: ['stunt', true], Escape: ['pause', true]
     };
     const down = event => {
       const action = keyMap[event.key] || keyMap[event.key.toLowerCase()];
@@ -82,7 +82,7 @@ export class RaceHUD {
       if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(event.key)) event.preventDefault();
       if (event.repeat && ['nitro', 'stunt', 'pause'].includes(action[0])) return;
       const key = action[0];
-      if (['gas', 'brake', 'left', 'right'].includes(key)) setInput(key, true);
+      if (['gas', 'brake', 'left', 'right', 'nitroOn'].includes(key)) setInput(key, true);
       else if (key === 'nitro') nitro();
       else if (key === 'stunt') stunt();
       else if (key === 'pause') pause();
@@ -90,10 +90,10 @@ export class RaceHUD {
     };
     const up = event => {
       const action = keyMap[event.key] || keyMap[event.key.toLowerCase()];
-      if (action && ['gas', 'brake', 'left', 'right'].includes(action[0])) setInput(action[0], false);
+      if (action && ['gas', 'brake', 'left', 'right', 'nitroOn'].includes(action[0])) setInput(action[0], false);
     };
     const blur = () => {
-      for (const key of ['gas', 'brake', 'left', 'right']) setInput(key, false);
+      for (const key of ['gas', 'brake', 'left', 'right', 'nitroOn']) setInput(key, false);
       for (const id of ['left', 'right', 'brake', 'gas']) this.root.querySelector('#' + id)?.classList.remove('pressed');
       active.clear();
     };
