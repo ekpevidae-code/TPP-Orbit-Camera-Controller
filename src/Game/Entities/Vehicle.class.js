@@ -16,6 +16,8 @@ export default class Vehicle {
     this.car.rotation.y = Math.PI;
     this.scene.add(this.car);
 
+    this.vehicleCode = 'starter_sedan';
+    this.isOwned = true; // Guest sessions may drive the local starter car.
     this.isDriving = false;
     this.speed = 0;
     this.maxSpeed = 24;
@@ -96,11 +98,13 @@ export default class Vehicle {
 
   updatePrompt() {
     if (!this.prompt) return;
+    this.prompt.style.display = this.isOwned ? 'block' : 'none';
     this.prompt.textContent = this.isDriving ? 'EXIT CAR' : 'ENTER CAR';
     this.prompt.classList.toggle('driving', this.isDriving);
   }
 
   toggleDriving() {
+    if (!this.isOwned) return;
     const player = this.game.world && this.game.world.player && this.game.world.player.player;
     if (!player) return;
 
@@ -146,6 +150,7 @@ export default class Vehicle {
   }
 
   update() {
+    if (!this.isOwned) return;
     const player = this.game.world && this.game.world.player && this.game.world.player.player;
     if (!player) return;
 
