@@ -245,8 +245,8 @@ function startRace() {
   state.running=true;state.paused=false;ui.pause.classList.add('hidden');countdownRemaining=2.8;gameStates.transition(GAME_STATES.COUNTDOWN);ui.message.style.opacity='1';ui.message.querySelector('strong').textContent='3';ui.message.querySelector('span').textContent='GET READY';
 }
 function resetRace() {
-  state.speed = 0; player.speed=0;nitroSystem.value=VEHICLES[state.selectedCar||0].nitro;gameStates.transition(GAME_STATES.GARAGE); state.steer = 0; state.drift = 0; state.nitro = 100; state.distance = 0; state.driftScore = 0; state.driftTime = 0; state.driftToastTime = 0; state.airborne=0;state.stuntSpin=0;state.stuntRoll=0;state.stuntDone=false;state.nitroMode=0;state.shockwave=0;state.perfect=0;state.rampIndex=0;
-  state.running = false; state.paused = false; state.finished = false;
+  state.speed = 0; player.speed=0;nitroSystem.reset(VEHICLES[state.selectedCar||0].nitro);gameStates.transition(GAME_STATES.GARAGE); state.steer = 0; state.drift = 0; state.nitro = 100; state.distance = 0; state.driftScore = 0; state.driftTime = 0; state.driftToastTime = 0; state.airborne=0;state.stuntSpin=0;state.stuntRoll=0;state.stuntDone=false;state.nitroMode=0;state.shockwave=0;state.perfect=0;state.rampIndex=0;
+  state.running = false; state.paused = false; state.finished = false; state.gas=false;state.brake=false;state.left=false;state.right=false;state.nitroOn=false;nitroButton.classList.remove('pressed');
   player.position.set(0, 0, 4); player.rotation.set(0, 0, 0);
   rivals.forEach((r, i) => { r.car.position.set(r.x, 0, -28 - i * 20); r.car.rotation.set(0, 0, 0); });
   ui.finish.classList.add('hidden'); ui.pause.classList.add('hidden');
@@ -277,7 +277,7 @@ bindHold('left', 'left');
 bindHold('right', 'right');
 // Nitro is tap-to-toggle on touchscreens so a short tap still delivers a usable boost.
 const nitroButton=document.querySelector('#nitro');
-nitroButton.addEventListener('pointerdown',e=>{e.preventDefault();const result=nitroSystem.tap(performance.now()/1000,state.running);state.nitro=nitroSystem.value;if(result==='SHOCKWAVE'){state.nitroOn=true;state.shockwave=3.6;arcadeFX.sparks();ui.nitroLabel.textContent='SHOCKWAVE';}else if(result==='PERFECT'){state.nitroOn=true;state.perfect=2.0;ui.nitroLabel.textContent='PERFECT';}else{state.nitroOn=!state.nitroOn;ui.nitroLabel.textContent=state.nitroOn?'NITRO ON':'NITRO';}nitroButton.classList.toggle('pressed',state.nitroOn);});
+nitroButton.addEventListener('pointerdown',e=>{e.preventDefault();const result=nitroSystem.tap(performance.now()/1000,state.running);state.nitro=nitroSystem.value;if(result==='UNAVAILABLE'){ui.nitroLabel.textContent='RACE FIRST';return;}if(result==='SHOCKWAVE'){state.nitroOn=true;state.shockwave=3.6;arcadeFX.sparks();ui.nitroLabel.textContent='SHOCKWAVE';}else if(result==='PERFECT'){state.nitroOn=true;state.perfect=2.0;ui.nitroLabel.textContent='PERFECT';}else{state.nitroOn=!state.nitroOn;ui.nitroLabel.textContent=state.nitroOn?'NITRO ON':'NITRO';}nitroButton.classList.toggle('pressed',state.nitroOn);});
 document.querySelector('#stunt')?.addEventListener('pointerdown',()=>{if(state.airborne>0){state.stuntSpinRate=state.stuntSpinRate||Math.PI*5;state.stuntDone=true;}});
 document.querySelector('#garage-start')?.addEventListener('click',startRace);
 function renderGarageStats(){const v=VEHICLES[state.selectedCar];const stats={topSpeed:v.topSpeed+state.upgrades[0]*2.2,acceleration:v.acceleration+state.upgrades[1]*2.4,handling:(v.handling+state.upgrades[2]*0.45)*10,nitro:v.nitro+state.upgrades[3]*8};for(const [key,value] of Object.entries(stats)){const el=document.querySelector('[data-stat="'+key+'"]');if(el){el.querySelector('strong').textContent=Math.round(value);el.querySelector('i b').style.width=Math.min(100,value/(key==='topSpeed'?70:key==='acceleration'?40:key==='handling'?75:120)*100)+'%';}}}
