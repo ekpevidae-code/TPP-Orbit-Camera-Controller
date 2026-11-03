@@ -238,17 +238,22 @@ let audioContext=null,engineOsc=null,engineGain=null,tireOsc=null,tireGain=null;
 function initAudio(){if(audioContext)return;const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;audioContext=new AC();engineOsc=audioContext.createOscillator();engineGain=audioContext.createGain();engineOsc.type='sawtooth';engineOsc.frequency.value=55;engineGain.gain.value=0.0001;engineOsc.connect(engineGain).connect(audioContext.destination);engineOsc.start();tireOsc=audioContext.createOscillator();tireGain=audioContext.createGain();tireOsc.type='triangle';tireOsc.frequency.value=420;tireGain.gain.value=0.0001;tireOsc.connect(tireGain).connect(audioContext.destination);tireOsc.start();}
 function startRace() {
   if(gameStates.current===GAME_STATES.RACING||gameStates.current===GAME_STATES.COUNTDOWN)return;
-  gameStates.transition(GAME_STATES.LOADING);
+  // Reset a completed race before entering LOADING; otherwise resetRace()
+  // would move the state back to GARAGE and make COUNTDOWN an invalid transition.
+  if (state.finished) resetRace();
+  if (!gameStates.transition(GAME_STATES.LOADING)) return;
   initAudio();if(audioContext?.state==='suspended')audioContext.resume();
   ui.garage?.classList.add('hidden');
-  if (state.finished) resetRace();
   state.running=true;state.paused=false;ui.pause.classList.add('hidden');countdownRemaining=2.8;gameStates.transition(GAME_STATES.COUNTDOWN);ui.message.style.opacity='1';ui.message.querySelector('strong').textContent='3';ui.message.querySelector('span').textContent='GET READY';
 }
 function resetRace() {
   state.speed = 0; player.speed=0;nitroSystem.reset(VEHICLES[state.selectedCar||0].nitro);gameStates.transition(GAME_STATES.GARAGE); state.steer = 0; state.drift = 0; state.nitro = nitroSystem.value; state.distance = 0; state.driftScore = 0; state.driftTime = 0; state.driftToastTime = 0; state.airborne=0;state.stuntSpin=0;state.stuntRoll=0;state.stuntDone=false;state.nitroMode=0;state.shockwave=0;state.perfect=0;state.rampIndex=0;
   state.running = false; state.paused = false; state.finished = false; state.gas=false;state.brake=false;state.left=false;state.right=false;state.nitroOn=false;nitroButton.classList.remove('pressed');
   player.position.set(0, 0, 4); player.rotation.set(0, 0, 0);
+  vehiclePhysics.lateral=0;vehiclePhysics.yaw=0;
   rivals.forEach((r, i) => { r.car.position.set(r.x, 0, -28 - i * 20); r.car.rotation.set(0, 0, 0); });
+  aiControllers.forEach(ai=>{ai.index=0;});
+  traffic.forEach((t,i)=>{t.car.position.set(t.x,0,[-95,-165,-230][i]??(-95-i*70));t.car.rotation.set(0,0,0);});
   ui.finish.classList.add('hidden'); ui.pause.classList.add('hidden');
   ui.message.style.opacity = '1'; ui.message.querySelector('strong').textContent = 'READY?';
   ui.message.querySelector('span').textContent = 'Tap RACE to start your run';
