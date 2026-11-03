@@ -2,7 +2,7 @@ import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 const cars = [
-  { id: 'falcon-gt', name: 'Falcon GT', class: 'C', price: 0, topSpeed: 54, acceleration: 26, handling: 5.5, nitroCapacity: 100 },
+  { id: 'falcon-gt', name: 'Falcon GT', class: 'C', price: 15000, topSpeed: 54, acceleration: 26, handling: 5.5, nitroCapacity: 100 },
   { id: 'vortex-r', name: 'Vortex R', class: 'B', price: 42000, topSpeed: 57, acceleration: 30, handling: 5.2, nitroCapacity: 92 },
   { id: 'apex-rs', name: 'Apex RS', class: 'A', price: 85000, topSpeed: 62, acceleration: 24, handling: 4.8, nitroCapacity: 110 },
   { id: 'd-class-sprint', name: 'Sprint 160', class: 'D', price: 12000, topSpeed: 42, acceleration: 22, handling: 6.2, nitroCapacity: 90 },
