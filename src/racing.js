@@ -10,7 +10,9 @@ const ui = {
   pause: document.querySelector('#pause-layer'),
   finish: document.querySelector('#finish-layer'),
   finishTitle: document.querySelector('#finish-title'),
-  finishCopy: document.querySelector('#finish-copy')
+  finishCopy: document.querySelector('#finish-copy'),
+  driftScore: document.querySelector('#drift-score'),
+  driftToast: document.querySelector('#drift-toast')
 };
 
 const scene = new THREE.Scene();
@@ -195,7 +197,7 @@ const rivals = [
 ];
 rivals.forEach(r => r.car.position.set(r.x, 0, r.z));
 
-const state = { speed: 0, steer: 0, drift: 0, nitro: 100, distance: 0, running: false, paused: false, finished: false, gas: false, brake: false, left: false, right: false, nitroOn: false, last: 0, shake: 0 };
+const state = { speed: 0, steer: 0, drift: 0, nitro: 100, distance: 0, driftScore: 0, driftTime: 0, driftToastTime: 0, running: false, paused: false, finished: false, gas: false, brake: false, left: false, right: false, nitroOn: false, last: 0, shake: 0 };
 const totalDistance = 3.0;
 const clamp = THREE.MathUtils.clamp;
 const clock = new THREE.Clock();
@@ -219,7 +221,7 @@ function startRace() {
   ui.state.textContent = 'RACE IN PROGRESS';
 }
 function resetRace() {
-  state.speed = 0; state.steer = 0; state.drift = 0; state.nitro = 100; state.distance = 0;
+  state.speed = 0; state.steer = 0; state.drift = 0; state.nitro = 100; state.distance = 0; state.driftScore = 0; state.driftTime = 0; state.driftToastTime = 0;
   state.running = false; state.paused = false; state.finished = false;
   player.position.set(0, 0, 4); player.rotation.set(0, 0, 0);
   rivals.forEach((r, i) => { r.car.position.set(r.x, 0, -28 - i * 20); r.car.rotation.set(0, 0, 0); });
@@ -228,6 +230,7 @@ function resetRace() {
   ui.message.querySelector('span').textContent = 'Tap RACE to start your run';
   ui.state.textContent = 'READY TO RACE';
   ui.speed.textContent = '000'; ui.distance.innerHTML = '0.0 <small>KM</small>'; ui.progress.style.width = '0%';
+  ui.driftScore.textContent = '0'; ui.driftToast.classList.remove('show');
 }
 function setPause(value) {
   if (!state.running && !state.paused) return;
@@ -289,6 +292,17 @@ function animate() {
     const speedFactor = 0.35 + state.speed / 55;
     const drifting = Math.abs(state.steer) > 0.35 && state.speed > 20;
     state.drift += ((drifting ? state.steer * 0.25 : 0) - state.drift) * dt * 2.5;
+    if (drifting) {
+      state.driftTime += dt;
+      state.driftScore += Math.round((state.speed * 0.8 + Math.abs(state.steer) * 35) * dt);
+      state.driftToastTime = 1.1;
+      ui.driftToast.classList.add('show');
+      ui.driftScore.textContent = state.driftScore.toLocaleString();
+    } else {
+      state.driftTime = 0;
+      state.driftToastTime = Math.max(0, state.driftToastTime - dt);
+      if (!state.driftToastTime) ui.driftToast.classList.remove('show');
+    }
     player.position.x += (state.steer * speedFactor * 7.2 + state.drift * 3.4) * dt;
     player.position.x = clamp(player.position.x, -6.7, 6.7);
     player.position.z -= state.speed * dt * 0.34;
@@ -309,6 +323,10 @@ function animate() {
     ui.speed.textContent = String(Math.round(state.speed * 3.2)).padStart(3, '0');
     ui.distance.innerHTML = state.distance.toFixed(1) + ' <small>KM</small>';
     ui.progress.style.width = Math.min(100, state.distance / totalDistance * 100) + '%';
+    const placesBehind = rivals.filter(r => r.car.position.z > player.position.z).length;
+    const place = Math.min(4, placesBehind + 1);
+    const suffix = place === 1 ? 'ST' : place === 2 ? 'ND' : place === 3 ? 'RD' : 'TH';
+    document.querySelector('#position').innerHTML = place + '<span>' + suffix + '</span>';
     if (state.distance >= totalDistance) {
       state.finished = true; state.running = false; state.speed = 0;
       ui.finishTitle.textContent = 'FINISH!';
