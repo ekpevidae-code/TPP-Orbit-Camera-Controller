@@ -75,7 +75,9 @@ resources.on('error', ({ id, url, itemsLoaded, itemsTotal }) => {
   }
 });
 
-resources.on('loaded', () => {
+resources.on('loaded', (event = {}) => {
+  if (gameStarted) return;
+  gameStarted = true;
   clearTimeout(startupTimer);
   if (startupPanel) {
     startupPanel.textContent = 'ASSETS LOADED\nStarting 3D engine…';
