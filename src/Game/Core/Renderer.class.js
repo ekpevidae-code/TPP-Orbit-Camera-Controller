@@ -18,7 +18,7 @@ export default class Renderer {
 
     this.isMobileDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints || 0) > 0;
     this.setRendererInstance();
-    if (this.isMobileDevice) this.createMobileDiagnostics();
+    // Keep diagnostics off the normal HUD; enable them with ?mode=debug.\n    if (this.isMobileDevice && this.isDebugMode) this.createMobileDiagnostics();
 
     if (this.isDebugMode) {
       this.initGUI();
@@ -48,7 +48,7 @@ export default class Renderer {
     this.rendererInstance.shadowMap.enabled = !this.isMobileDevice;
     this.rendererInstance.shadowMap.type = THREE.PCFShadowMap;
     this.rendererInstance.setSize(this.sizes.width, this.sizes.height);
-    this.rendererInstance.setPixelRatio(this.sizes.pixelRatio);
+    this.rendererInstance.setPixelRatio(this.isMobileDevice ? Math.min(this.sizes.pixelRatio, 1.25) : this.sizes.pixelRatio);
 
     if (this.isDebugMode) {
       this.setUpPerformanceMonitor();
