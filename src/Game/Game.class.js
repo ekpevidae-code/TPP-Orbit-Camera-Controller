@@ -7,6 +7,7 @@ import World from './Scenes/WorldScene/World.scene';
 import DebugGUI from './Utils/DebugGUI';
 import InputManager from './Input/InputManager.class';
 import UIController from './UI/UIController.class';
+import GameSessionController from './Backend/GameSessionController.class';
 
 export default class Game {
   constructor(canvas, resources, isDebugMode) {
@@ -45,6 +46,7 @@ export default class Game {
     this.inputManager.initialize();
     this.world = new World();
     this.uiController = new UIController();
+    this.sessionController = new GameSessionController(this);
 
     /**
      * Event handlers
@@ -85,12 +87,14 @@ export default class Game {
     if (!this.isPaused) {
       this.camera.update();
       this.world.update();
+      if (this.sessionController) this.sessionController.tick(this.time.delta);
     }
     this.renderer.update();
     this.uiController.update();
   }
 
   destroy() {
+    if (this.sessionController) this.sessionController.destroy();
     this.sizes.off('resize');
     this.time.off('animate');
 
