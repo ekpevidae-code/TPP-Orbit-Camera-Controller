@@ -3,6 +3,7 @@ import { createArcadeFX } from './arcade-systems.js';
 import { GAME_STATES, VEHICLES, GameStateManager, NitroController, AABBCollisionSystem, WaypointRacerAI, GameLoop } from './game-core.js';
 import { RaceHUD } from './hud.js';
 import { ArcadeVehicleController } from './game.js';
+import { session, registerAccount, loginAccount, logoutAccount, getGarage, purchaseCar, upgradeCar, selectCar } from './api.js';
 
 const canvas = document.querySelector('#race-canvas');
 const ui = {
@@ -217,7 +218,7 @@ const gameStates=new GameStateManager(GAME_STATES.MENU);
 const vehiclePhysics=new ArcadeVehicleController(VEHICLES[0]);
 const nitroSystem=new NitroController(VEHICLES[0].nitro);
 const collisions=new AABBCollisionSystem();
-const state = { speed: 0, steer: 0, drift: 0, nitro: 100, distance: 0, driftScore: 0, driftTime: 0, driftToastTime: 0, running: false, paused: false, finished: false, gas: false, brake: false, left: false, right: false, nitroOn: false, last: 0, shake: 0, airborne: 0, stuntSpin: 0, stuntSpinRate: 0, stuntRoll: 0, stuntDone: false, nitroTap: 0, nitroMode: 0, shockwave: 0, perfect: 0, rampIndex: 0, nearMissCooldown: 0, selectedCar: 0, upgrades: [0,0,0,0] };
+const state = { serverPlayerCarId: null, serverCarModelId: 'falcon-gt', speed: 0, steer: 0, drift: 0, nitro: 100, distance: 0, driftScore: 0, driftTime: 0, driftToastTime: 0, running: false, paused: false, finished: false, gas: false, brake: false, left: false, right: false, nitroOn: false, last: 0, shake: 0, airborne: 0, stuntSpin: 0, stuntSpinRate: 0, stuntRoll: 0, stuntDone: false, nitroTap: 0, nitroMode: 0, shockwave: 0, perfect: 0, rampIndex: 0, nearMissCooldown: 0, selectedCar: 0, upgrades: [0,0,0,0] };
 const hud = new RaceHUD();
 const arcadeFX = createArcadeFX(scene,camera,renderer,player);
 let countdownRemaining=0, crashTime=0;
@@ -281,9 +282,54 @@ nitroButton.addEventListener('pointerdown',e=>{e.preventDefault();activateNitro(
 document.querySelector('#stunt')?.addEventListener('pointerdown',()=>{if(state.airborne>0){state.stuntSpinRate=state.stuntSpinRate||Math.PI*5;state.stuntDone=true;}});
 document.querySelector('#garage-start')?.addEventListener('click',startRace);
 function renderGarageStats(){const v=VEHICLES[state.selectedCar];const stats={topSpeed:v.topSpeed+state.upgrades[0]*2.2,acceleration:v.acceleration+state.upgrades[1]*2.4,handling:(v.handling+state.upgrades[2]*0.45)*10,nitro:v.nitro+state.upgrades[3]*8};for(const [key,value] of Object.entries(stats)){const el=document.querySelector('[data-stat="'+key+'"]');if(el){el.querySelector('strong').textContent=Math.round(value);el.querySelector('i b').style.width=Math.min(100,value/(key==='topSpeed'?70:key==='acceleration'?40:key==='handling'?75:120)*100)+'%';}}}
-document.querySelectorAll('[data-car]').forEach(btn=>btn.addEventListener('click',()=>{state.selectedCar=Number(btn.dataset.car);const colors=[0xf04d25,0x20a8d8,0xd6dce4];vehiclePhysics.setStats(VEHICLES[state.selectedCar]);nitroSystem.capacity=VEHICLES[state.selectedCar].nitro;nitroSystem.value=nitroSystem.capacity;player.traverse(o=>{if(o.isMesh&&o.material?.metalness>0.5&&o.material.color) o.material.color.setHex(colors[state.selectedCar]);});document.querySelectorAll('[data-car]').forEach(b=>b.classList.toggle('selected',b===btn));renderGarageStats();}));
+document.querySelectorAll('[data-car]').forEach(btn=>btn.addEventListener('click',async()=>{try{const index=Number(btn.dataset.car);const modelId=['falcon-gt','vortex-r','apex-rs'][index];if(session.authenticated){let data=await getGarage();let owned=data.cars.find(car=>car.carModelId===modelId);if(!owned){const purchase=await purchaseCar(modelId);owned=purchase.playerCar;}const selection=await selectCar(owned.id);state.serverPlayerCarId=selection.playerCar.id;state.serverCarModelId=modelId;await refreshOnlineGarage();}state.selectedCar=index;state.upgrades=[0,0,0,0];const colors=[0xf04d25,0x20a8d8,0xd6dce4];vehiclePhysics.setStats(VEHICLES[index]);nitroSystem.reset(VEHICLES[index].nitro);player.traverse(o=>{if(o.isMesh&&o.material?.metalness>0.5&&o.material.color)o.material.color.setHex(colors[index]);});document.querySelectorAll('[data-car]').forEach(b=>b.classList.toggle('selected',b===btn));renderGarageStats();}catch(error){setAccountMessage(error.message,true);}}));
 renderGarageStats();
-document.querySelectorAll('[data-upgrade]').forEach(btn=>btn.addEventListener('click',()=>{const i=Number(btn.dataset.upgrade);state.upgrades[i]=Math.min(3,state.upgrades[i]+1);btn.querySelector('b').textContent='+'+state.upgrades[i];const base=VEHICLES[state.selectedCar];vehiclePhysics.setStats({topSpeed:base.topSpeed+state.upgrades[0]*2.2,acceleration:base.acceleration+state.upgrades[1]*2.4,handling:base.handling+state.upgrades[2]*0.45,nitro:base.nitro+state.upgrades[3]*8});nitroSystem.capacity=vehiclePhysics.stats.nitro;nitroSystem.value=nitroSystem.capacity;renderGarageStats();}));
+
+const accountForm=document.querySelector('#account-form');
+const accountFeedback=document.querySelector('#account-feedback');
+const accountWallet=document.querySelector('#account-wallet');
+const accountLogout=document.querySelector('#account-logout');
+const setAccountMessage=(message,isError=false)=>{if(accountFeedback){accountFeedback.textContent=message;accountFeedback.style.color=isError?'#ff9b91':'#b7c5d8';}};
+async function refreshOnlineGarage(){
+  if(!session.authenticated)return;
+  const data=await getGarage();
+  accountWallet.textContent='CREDITS: '+Number(data.wallet?.credits||0).toLocaleString();
+  accountLogout.classList.remove('hidden');
+  const selected=data.cars.find(car=>car.isSelected)||data.cars[0];
+  if(selected){
+    state.serverPlayerCarId=selected.id;state.serverCarModelId=selected.carModelId;
+    const index=['falcon-gt','vortex-r','apex-rs'].indexOf(selected.carModelId);
+    if(index>=0){
+      state.selectedCar=index;
+      state.upgrades=[selected.topSpeedLevel,selected.accelerationLevel,selected.handlingLevel,selected.nitroLevel];
+      const base=VEHICLES[index];
+      vehiclePhysics.setStats({topSpeed:base.topSpeed+state.upgrades[0]*2.2,acceleration:base.acceleration+state.upgrades[1]*2.4,handling:base.handling+state.upgrades[2]*0.45,nitro:base.nitro+state.upgrades[3]*8});
+      nitroSystem.reset(vehiclePhysics.stats.nitro);
+      document.querySelectorAll('[data-car]').forEach(button=>button.classList.toggle('selected',Number(button.dataset.car)===index));
+      document.querySelectorAll('[data-upgrade]').forEach(button=>button.querySelector('b').textContent='+'+state.upgrades[Number(button.dataset.upgrade)]);
+      renderGarageStats();
+    }
+  }
+  setAccountMessage('Garage synced securely with your account.');
+}
+accountForm?.addEventListener('submit',async event=>{
+  event.preventDefault();
+  try{
+    await loginAccount({email:document.querySelector('#account-email').value,password:document.querySelector('#account-password').value});
+    await refreshOnlineGarage();
+  }catch(error){setAccountMessage(error.message,true);}
+});
+document.querySelector('#account-register')?.addEventListener('click',async()=>{
+  try{
+    await registerAccount({email:document.querySelector('#account-email').value,username:document.querySelector('#account-username').value,password:document.querySelector('#account-password').value});
+    await refreshOnlineGarage();
+    setAccountMessage('Account created. Your starter wallet is ready.');
+  }catch(error){setAccountMessage(error.message,true);}
+});
+accountLogout?.addEventListener('click',()=>{logoutAccount();state.serverPlayerCarId=null;accountWallet.textContent='Signed out';accountLogout.classList.add('hidden');setAccountMessage('Signed out. Local practice remains available.');});
+if(session.authenticated)refreshOnlineGarage().catch(error=>{logoutAccount();setAccountMessage(error.message,true);});
+
+document.querySelectorAll('[data-upgrade]').forEach(btn=>btn.addEventListener('click',async()=>{try{const i=Number(btn.dataset.upgrade);if(session.authenticated){if(!state.serverPlayerCarId)throw new Error('Select an owned car first.');const stat=['topSpeed','acceleration','handling','nitro'][i];const result=await upgradeCar(state.serverPlayerCarId,stat);state.upgrades=[result.playerCar.topSpeedLevel,result.playerCar.accelerationLevel,result.playerCar.handlingLevel,result.playerCar.nitroLevel];await refreshOnlineGarage();}else{state.upgrades[i]=Math.min(3,state.upgrades[i]+1);}btn.querySelector('b').textContent='+'+state.upgrades[i];const base=VEHICLES[state.selectedCar];vehiclePhysics.setStats({topSpeed:base.topSpeed+state.upgrades[0]*2.2,acceleration:base.acceleration+state.upgrades[1]*2.4,handling:base.handling+state.upgrades[2]*0.45,nitro:base.nitro+state.upgrades[3]*8});nitroSystem.reset(vehiclePhysics.stats.nitro);renderGarageStats();}catch(error){setAccountMessage(error.message,true);}}));
 
 document.querySelector('#pause').addEventListener('click', () => setPause(!state.paused));
 document.querySelector('#resume').addEventListener('click', () => setPause(false));
