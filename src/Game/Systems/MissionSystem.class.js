@@ -6,7 +6,7 @@ export default class MissionSystem {
     this.game = Game.getInstance();
     this.scene = this.game.scene;
     this.code = "welcome_drive";
-    this.target = new THREE.Vector3(38, 0, -38);
+    this.target = new THREE.Vector3(0, 0, -60);
     this.radius = 4;
     this.rewardCash = 250;
     this.status = "available";
@@ -86,7 +86,7 @@ export default class MissionSystem {
   applyPlayerMissions(missions = [], definitions = []) {
     const definition = definitions.find((item) => item.mission_code === this.code);
     if (definition) {
-      this.target.fromArray(definition.config?.target || [38, 0, -38]);
+      this.target.fromArray(definition.config?.target || [0, 0, -60]);
       this.radius = Number(definition.config?.radius || 4);
       this.rewardCash = Number(definition.reward_cash || 0);
       this.panel.querySelector(".mission-title").textContent = definition.title || "FIRST DRIVE";
