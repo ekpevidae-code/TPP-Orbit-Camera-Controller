@@ -1,0 +1,119 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum CarClass {
+  D
+  C
+  B
+  A
+  S
+}
+
+enum LedgerKind {
+  PURCHASE
+  UPGRADE
+  RACE_REWARD
+  ADMIN_ADJUSTMENT
+}
+
+model User {
+  id           String       @id @default(cuid())
+  email        String       @unique
+  username     String       @unique
+  passwordHash String
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  wallet       Wallet?
+  cars         PlayerCar[]
+  raceResults  RaceResult[]
+  ledger       EconomyLedger[]
+  @@index([createdAt])
+}
+
+model Wallet {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  credits   Int      @default(25000)
+  version   Int      @default(0)
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@check(credits >= 0)
+}
+
+model CarModel {
+  id             String     @id
+  name           String
+  class          CarClass
+  price          Int
+  topSpeed       Float
+  acceleration   Float
+  handling       Float
+  nitroCapacity  Float
+  enabled        Boolean    @default(true)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  playerCars     PlayerCar[]
+  @@index([class, enabled])
+  @@check(price >= 0)
+}
+
+model PlayerCar {
+  id                 String   @id @default(cuid())
+  userId             String
+  carModelId         String
+  purchasedAt        DateTime @default(now())
+  isSelected         Boolean  @default(false)
+  topSpeedLevel      Int      @default(0)
+  accelerationLevel  Int      @default(0)
+  handlingLevel      Int      @default(0)
+  nitroLevel         Int      @default(0)
+  version            Int      @default(0)
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  carModel           CarModel @relation(fields: [carModelId], references: [id], onDelete: Restrict)
+  @@unique([userId, carModelId])
+  @@index([userId, isSelected])
+  @@check(topSpeedLevel >= 0 AND topSpeedLevel <= 10)
+  @@check(accelerationLevel >= 0 AND accelerationLevel <= 10)
+  @@check(handlingLevel >= 0 AND handlingLevel <= 10)
+  @@check(nitroLevel >= 0 AND nitroLevel <= 10)
+}
+
+model RaceResult {
+  id              String   @id @default(cuid())
+  userId          String
+  trackId         String
+  carModelId      String
+  finishPosition  Int
+  durationMs      Int
+  distanceMeters  Int
+  driftScore      Int      @default(0)
+  rewardCredits   Int      @default(0)
+  createdAt       DateTime @default(now())
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, createdAt])
+  @@index([trackId, finishPosition, durationMs])
+  @@check(finishPosition >= 1)
+  @@check(durationMs > 0)
+}
+
+model EconomyLedger {
+  id             String     @id @default(cuid())
+  userId         String
+  kind           LedgerKind
+  amount         Int
+  balanceAfter   Int
+  idempotencyKey String
+  metadata       Json?
+  createdAt      DateTime   @default(now())
+  user           User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([userId, idempotencyKey])
+  @@index([userId, createdAt])
+  @@check(amount != 0)
+  @@check(balanceAfter >= 0)
+}
