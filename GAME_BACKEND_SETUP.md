@@ -44,8 +44,8 @@ Mission completion changes mission status, updates the wallet and writes the wal
 - Security advisor: no remaining security findings after deny policy added for action receipts
 - Edge Function: deployed; latest version 5, JWT verification enabled
 - Game source: client adapter and session controller committed
-- Automated production build workflow: added; production build has passed on recent commits, with the latest small changes queued for another run
-- Runtime account sign-in, cloud restore/save, pickup collection and mission payout still need a real in-game test account/device run; the SQL transaction smoke test has passed
+- Automated production build workflow: production build passed on the latest code commit (e97e741)
+- SQL transaction smoke test passed: mission completion paid $250, marked the mission complete, wrote one ledger entry, and a repeated pickup action did not double-add ammo. Runtime sign-in, cloud restore/save, pickup collection and mission payout still need a real test account and phone run
 
 ## Not a high-frequency multiplayer server
 This is a persistent-player backend, not a dedicated authoritative 3D simulation server. A shared real-time open world needs a separate game server with client prediction/interpolation, server authority and replication. Supabase should not receive character or vehicle transforms every frame.
