@@ -54,7 +54,26 @@ export default class UIController {
     };
     bindHold('jump-btn', 32);
     bindHold('gas-btn', 87);
-    bindHold('brake-btn', 83);
+    const brakeButton = document.getElementById('brake-btn');
+    if (brakeButton) {
+      let brakePointerId = null;
+      const setBrake = (active) => {
+        this.inputManager.keys.brake = active;
+        brakeButton.classList.toggle('pressed', active);
+      };
+      brakeButton.addEventListener('pointerdown', (event) => {
+        event.preventDefault(); event.stopPropagation();
+        brakePointerId = event.pointerId;
+        try { brakeButton.setPointerCapture(brakePointerId); } catch (_) {}
+        setBrake(true);
+      });
+      const releaseBrake = (event) => {
+        if (brakePointerId === null || (event.pointerId !== undefined && event.pointerId !== brakePointerId)) return;
+        brakePointerId = null; setBrake(false);
+      };
+      ['pointerup', 'pointercancel', 'lostpointercapture'].forEach((type) => brakeButton.addEventListener(type, releaseBrake));
+      window.addEventListener('blur', () => { brakePointerId = null; setBrake(false); });
+    }
 
     this.miniMap = document.getElementById('mini-map');
     this.miniMapContext = this.miniMap ? this.miniMap.getContext('2d') : null;
