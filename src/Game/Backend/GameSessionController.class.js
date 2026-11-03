@@ -60,7 +60,8 @@ export default class GameSessionController {
     this.passwordInput = panel.querySelector(".game-account-password");
     this.connectedActions = panel.querySelector(".game-account-connected");
 
-    panel.querySelector(".game-account-close").addEventListener("click", () => panel.classList.add("collapsed"));
+    panel.querySelector(".game-account-head").addEventListener("click", () => panel.classList.toggle("collapsed"));
+    panel.querySelector(".game-account-close").addEventListener("click", (event) => { event.stopPropagation(); panel.classList.add("collapsed"); });
     this.form.addEventListener("submit", (event) => {
       event.preventDefault();
       this.signIn();
@@ -68,6 +69,10 @@ export default class GameSessionController {
     panel.querySelector(".game-account-signup").addEventListener("click", () => this.signUp());
     panel.querySelector(".game-account-save").addEventListener("click", () => this.saveNow(false));
     panel.querySelector(".game-account-logout").addEventListener("click", () => this.signOut());
+  }
+
+  tick(delta) {
+    if (this.connected && Number.isFinite(delta)) this.playtimeSeconds += Math.max(0, Math.min(delta, 0.1));
   }
 
   setStatus(message, error = false) {
