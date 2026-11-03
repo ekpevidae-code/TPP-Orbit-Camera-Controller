@@ -53,16 +53,16 @@ function box(parent, w, h, d, material, x, y, z, cast = true) {
   return mesh;
 }
 
-const ground = new THREE.Mesh(new THREE.PlaneGeometry(700, 700), mats.grass);
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(700, 3200), mats.grass);
 ground.rotation.x = -Math.PI / 2;
-ground.position.y = -0.14;
+ground.position.set(0, -0.14, -1400);
 ground.receiveShadow = true;
 scene.add(ground);
 
 // A long closed-loop-inspired circuit, built from straight road sections and broad bends.
 const road = new THREE.Group();
 scene.add(road);
-const roadLength = 620;
+const roadLength = 2800;
 const roadWidth = 17;
 const roadMesh = new THREE.Mesh(new THREE.PlaneGeometry(roadWidth, roadLength), mats.asphalt);
 roadMesh.rotation.x = -Math.PI / 2;
@@ -92,9 +92,9 @@ road.add(startLine);
 
 // Hills, trees and trackside details.
 const hillMat = new THREE.MeshStandardMaterial({ color: 0x687e69, roughness: 1 });
-for (let i = 0; i < 24; i++) {
+for (let i = 0; i < 100; i++) {
   const x = (i % 2 ? 1 : -1) * (28 + Math.random() * 55);
-  const z = -i * 24 + 5;
+  const z = -i * 28 + 5;
   const hill = new THREE.Mesh(new THREE.ConeGeometry(9 + Math.random() * 12, 18 + Math.random() * 25, 5), hillMat);
   hill.position.set(x, 5, z);
   hill.rotation.y = Math.random() * 2;
@@ -103,10 +103,10 @@ for (let i = 0; i < 24; i++) {
 }
 const treeTrunk = new THREE.MeshStandardMaterial({ color: 0x5a4532, roughness: 1 });
 const treeTop = new THREE.MeshStandardMaterial({ color: 0x294a37, roughness: 1 });
-for (let i = 0; i < 58; i++) {
+for (let i = 0; i < 240; i++) {
   const side = i % 2 ? 1 : -1;
   const x = side * (13 + Math.random() * 28);
-  const z = 4 - i * 10.5;
+  const z = 4 - i * 11.5;
   const tree = new THREE.Group();
   const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.3, 2.2, 6), treeTrunk);
   trunk.position.y = 1.1;
