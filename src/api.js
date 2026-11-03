@@ -21,7 +21,7 @@ export class VelocityAPIError extends Error {
 export const session = {
   get token() { return savedSession?.access_token || null; },
   get authenticated() {
-    return Boolean(savedSession?.access_token && (!savedSession.expires_at || savedSession.expires_at * 1000 > Date.now()));
+    return Boolean(savedSession?.access_token);
   },
   setSession(value) {
     savedSession = value?.access_token ? {
