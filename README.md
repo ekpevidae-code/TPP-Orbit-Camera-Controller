@@ -74,3 +74,35 @@ Before the first API start, run `npx prisma db push` and `npm run db:seed` from 
 ## Important deployment boundary
 
 The repository contains the complete API source and database schema, but the API is not live until a PostgreSQL database and a persistent Node.js host are configured with the environment variables above. The current Vercel deployment serves the game frontend only. No database credentials or hosted database were present in the connected project, so none have been fabricated or committed.
+
+
+## Velocity Run Supabase backend (active racing runtime)
+
+The racing client now uses the existing Supabase project `tpp-open-world-game-backend` in the `Universal AI Builder` Free organization. Project reference: `jgoygfnlvgognltxtfyf`, region: `eu-west-1`.
+
+The existing open-world game tables are preserved. The racing migration adds a separate racing catalogue, player-car ownership/upgrades, an append-only racing economy ledger, idempotency receipts, and race-result records. The racing account system uses Supabase Auth; there is no database password or service-role key in the browser.
+
+### Racing backend operations
+
+- `race_get_garage()`: initializes the player's racing profile, wallet (25,000 starting credits if no wallet exists), and Falcon GT starter car, then returns garage and catalogue.
+- `race_purchase_car(carModelId, actionKey)`: row-locks the wallet, checks funds and ownership, debits credits and creates the owned car in one Postgres transaction. Action keys are idempotent.
+- `race_upgrade_car(playerCarId, stat, actionKey)`: locks the owned car and wallet, enforces level 10, charges a server-calculated price and updates the level atomically.
+- `race_select_car(playerCarId)`: selects only a car owned by the signed-in user.
+- `race_record_result(...)`: stores client-submitted results as unverified. It does not award credits or qualify results for leaderboards.
+
+The database tables have RLS enabled. Economy-changing operations are exposed only through authenticated Postgres RPC functions that derive the player ID from `auth.uid()`. The browser uses the Supabase publishable key only; no service-role key is exposed. The race economy ledger is append-only.
+
+### Supabase project and deployment configuration
+
+Vercel has been configured with these browser-safe build variables for Production, Preview and Development:
+
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY` (publishable key)
+
+These values are safe to ship in the browser when paired with the database grants and RLS policies. Never set a service-role or secret API key as a `VITE_*` variable.
+
+To run the client locally, copy `.env.example` to `.env.local`, fill in the two Vite Supabase values, then run `npm install` and `npm run dev`. The account form uses Supabase email/password authentication; if email confirmation is enabled, confirm the email before signing in.
+
+### Database migrations
+
+The racing migrations are stored under `supabase/migrations/`. They were applied to the existing Supabase project and verified with a database query. The Supabase project also contains earlier open-world game migrations that are not recreated by these two racing-only migration files.
