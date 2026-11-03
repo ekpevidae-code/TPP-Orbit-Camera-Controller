@@ -312,6 +312,7 @@ function animate() {
     const drifting = Math.abs(state.steer) > 0.35 && state.speed > 20;
     state.drift += ((drifting ? state.steer * 0.25 : 0) - state.drift) * dt * 2.5;
     if (drifting) {
+      state.nitro=Math.min(100,state.nitro+(state.speed*0.012+4)*dt); arcadeFX.skid();
       state.driftTime += dt;
       state.driftScore += Math.round((state.speed * 0.8 + Math.abs(state.steer) * 35) * dt);
       state.driftToastTime = 1.1;
@@ -325,8 +326,10 @@ function animate() {
     player.position.x += (state.steer * speedFactor * 7.2 + state.drift * 3.4) * dt;
     player.position.x = clamp(player.position.x, -6.7, 6.7);
     player.position.z -= state.speed * dt * 0.34;
-    player.rotation.y = state.stuntSpin - state.steer * 0.16 - state.drift * 0.18;
-    player.rotation.z = -state.steer * 0.055 - state.drift * 0.09;
+    if(state.airborne>0){state.airborne=Math.max(0,state.airborne-dt);player.position.y=0.8+Math.sin((1.1-state.airborne)/1.1*Math.PI)*2.5;state.stuntRoll+=state.steer*dt*4.2;if(state.airborne===0){player.position.y=0;if(state.stuntDone){state.nitro=Math.min(100,state.nitro+28);state.driftScore+=500;ui.nitroLabel.textContent='LANDING +NITRO';}state.stuntDone=false;state.stuntSpin=0;}}
+    const stuntAt=[0.42,1.18,2.05];if(state.rampIndex<stuntAt.length&&state.distance>=stuntAt[state.rampIndex]){state.airborne=1.1;state.stuntDone=false;state.stuntRoll=0;state.rampIndex++;arcadeFX.sparks();}
+    player.rotation.y = state.stuntSpin - state.steer * 0.16 - state.steer * 0.16 - state.drift * 0.18;
+    player.rotation.z = (state.airborne>0?state.stuntRoll:0) - state.steer * 0.055 - state.drift * 0.09;
     player.userData.wheels.forEach(w => { w.rotation.x += state.speed * dt * 0.16; if (w.userData.front) w.rotation.y = -state.steer * 0.25; });
     state.distance += state.speed * dt / 3600 * 1.65;
     rivals.forEach((r, i) => {
@@ -334,14 +337,19 @@ function animate() {
       if (r.car.position.z > 13) r.car.position.z = -110 - Math.random() * 65;
       r.car.position.x = r.x + Math.sin(clock.elapsedTime * 0.35 + i) * 0.45;
     });
-    camera.fov=THREE.MathUtils.damp(camera.fov,66+Math.max(0,state.speed-25)*0.42+(usingNitro?8:0),4,dt);camera.updateProjectionMatrix();\n    const targetCam = new THREE.Vector3(player.position.x * 0.48, 5.4 + state.speed * 0.018, player.position.z + 10.5+state.speed*0.035);
+    state.nearMissCooldown=Math.max(0,state.nearMissCooldown-dt);
+    traffic.forEach((t,i)=>{t.car.position.z+=state.speed*dt*0.34-(t.speed*11*dt);if(t.car.position.z>13)t.car.position.z=-260-Math.random()*160;t.car.position.x=t.x+Math.sin(clock.elapsedTime*0.22+i)*0.28;const gap=Math.abs(t.car.position.z-player.position.z);const laneGap=Math.abs(t.car.position.x-player.position.x);if(gap<3.2&&laneGap<2.3&&laneGap>1.15&&state.nearMissCooldown===0){state.nitro=Math.min(100,state.nitro+12);state.nearMissCooldown=1.2;arcadeFX.sparks();ui.nitroLabel.textContent='NEAR MISS +';}});
+
+    camera.fov=THREE.MathUtils.damp(camera.fov,66+Math.max(0,state.speed-25)*0.42+(usingNitro?8:0),4,dt);camera.updateProjectionMatrix();
+    const targetCam = new THREE.Vector3(player.position.x * 0.48, 5.4 + state.speed * 0.018, player.position.z + 10.5+state.speed*0.035);
     camera.position.lerp(targetCam, 1 - Math.pow(0.001, dt));
     camera.lookAt(player.position.x * 0.2, 0.8, player.position.z - 9);
     state.shake = usingNitro ? 0.035 : 0;
     camera.position.x += (Math.random() - 0.5) * state.shake;
     ui.speed.textContent = String(Math.round(state.speed * 3.2)).padStart(3, '0');
     ui.distance.innerHTML = state.distance.toFixed(1) + ' <small>KM</small>';
-    ui.progress.style.width = Math.min(100, state.distance / totalDistance * 100) + '%';\n    ui.nitroFill.style.width=state.nitro+'%';ui.nitroSegments.forEach((s,i)=>s.classList.toggle('filled',state.nitro>(i*10)));
+    ui.progress.style.width = Math.min(100, state.distance / totalDistance * 100) + '%';
+    ui.nitroFill.style.width=state.nitro+'%';ui.nitroSegments.forEach((s,i)=>s.classList.toggle('filled',state.nitro>(i*10)));
     const placesBehind = rivals.filter(r => r.car.position.z < player.position.z).length;
     const place = Math.min(4, placesBehind + 1);
     const suffix = place === 1 ? 'ST' : place === 2 ? 'ND' : place === 3 ? 'RD' : 'TH';
