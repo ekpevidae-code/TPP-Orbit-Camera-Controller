@@ -152,18 +152,14 @@ app.post('/api/garage/select', requireAuth, asyncRoute(async (req, res) => {
   res.json({ playerCar: selected });
 }));
 
-app.post('/api/races/results', requireAuth, asyncRoute(async (req, res) => {
+app.post('/api/races/results', requireAuth, rateLimit({ windowMs: 60_000, limit: 5 }), asyncRoute(async (req, res) => {
   const input = z.object({ trackId: z.string().min(1).max(64), carModelId: z.string().min(1).max(64), finishPosition: z.number().int().min(1).max(6), durationMs: z.number().int().min(1000).max(3_600_000), distanceMeters: z.number().int().min(1).max(1_000_000), driftScore: z.number().int().min(0).max(100_000_000) }).parse(req.body);
-  const reward = Math.max(100, Math.round(1800 / input.finishPosition + Math.min(input.driftScore, 50000) * 0.025));
-  const result = await serializable(async tx => {
+  const race = await prisma.$transaction(async tx => {
     const owned = await tx.playerCar.findFirst({ where: { userId: req.userId, carModelId: input.carModelId } });
     if (!owned) throw Object.assign(new Error('Race car is not owned by this account'), { status: 403 });
-    const race = await tx.raceResult.create({ data: { ...input, userId: req.userId, rewardCredits: reward } });
-    const wallet = await tx.wallet.update({ where: { userId: req.userId }, data: { credits: { increment: reward }, version: { increment: 1 } } });
-    await tx.economyLedger.create({ data: { userId: req.userId, kind: 'RACE_REWARD', amount: reward, balanceAfter: wallet.credits, idempotencyKey: randomUUID(), metadata: { raceResultId: race.id } } });
-    return { race, wallet };
-  });
-  res.status(201).json(result);
+    return tx.raceResult.create({ data: { ...input, userId: req.userId, rewardCredits: 0 } });
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+  res.status(201).json({ race, trustedForLeaderboard: false, rewardCredits: 0 });
 }));
 
 app.use((err, _req, res, _next) => {
