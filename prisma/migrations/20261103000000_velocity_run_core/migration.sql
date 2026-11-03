@@ -101,3 +101,12 @@ ALTER TABLE "PlayerCar" ADD CONSTRAINT "PlayerCar_userId_fkey" FOREIGN KEY ("use
 ALTER TABLE "PlayerCar" ADD CONSTRAINT "PlayerCar_carModelId_fkey" FOREIGN KEY ("carModelId") REFERENCES "CarModel"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "RaceResult" ADD CONSTRAINT "RaceResult_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE "EconomyLedger" ADD CONSTRAINT "EconomyLedger_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+CREATE FUNCTION "reject_economy_ledger_mutation"() RETURNS trigger AS $$
+BEGIN
+  RAISE EXCEPTION 'EconomyLedger rows are append-only';
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER "EconomyLedger_append_only"
+BEFORE UPDATE OR DELETE ON "EconomyLedger"
+FOR EACH ROW EXECUTE FUNCTION "reject_economy_ledger_mutation"();
