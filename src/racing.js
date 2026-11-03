@@ -21,16 +21,17 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x9bb5c8);
 scene.fog = new THREE.Fog(0x9bb5c8, 65, 230);
 const camera = new THREE.PerspectiveCamera(66, 1, 0.1, 500);
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: window.innerWidth >= 800, powerPreference: 'high-performance' });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, window.innerWidth < 800 ? 1.15 : 1.6));
-renderer.shadowMap.enabled = window.innerWidth >= 800;
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: window.innerWidth >= 800, powerPreference: 'high-performance', stencil: false, depth: true });
+const mobileDevice = window.matchMedia('(max-width: 760px), (pointer: coarse)').matches;
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, mobileDevice ? 0.85 : 1.35));
+renderer.shadowMap.enabled = !mobileDevice && window.innerWidth >= 800;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 
 scene.add(new THREE.HemisphereLight(0xeaf5ff, 0x45505a, 2.0));
 const sun = new THREE.DirectionalLight(0xffedcf, 2.2);
 sun.position.set(-35, 65, 28);
-sun.castShadow = true;
+sun.castShadow = !mobileDevice;
 sun.shadow.mapSize.set(1024, 1024);
 scene.add(sun);
 
@@ -274,9 +275,9 @@ bindHold('gas', 'gas');
 bindHold('brake', 'brake');
 bindHold('left', 'left');
 bindHold('right', 'right');
-bindHold('nitro', 'nitroOn');
+// Nitro is tap-to-toggle on touchscreens so a short tap still delivers a usable boost.
 const nitroButton=document.querySelector('#nitro');
-nitroButton.addEventListener('pointerdown',e=>{const result=nitroSystem.tap(performance.now()/1000,state.running);state.nitro=nitroSystem.value;if(result==='SHOCKWAVE'){state.shockwave=3.1;arcadeFX.sparks();ui.nitroLabel.textContent='SHOCKWAVE';}else if(result==='PERFECT'){state.perfect=1.7;ui.nitroLabel.textContent='PERFECT';}else ui.nitroLabel.textContent='NITRO';});
+nitroButton.addEventListener('pointerdown',e=>{e.preventDefault();const result=nitroSystem.tap(performance.now()/1000,state.running);state.nitro=nitroSystem.value;if(result==='SHOCKWAVE'){state.nitroOn=true;state.shockwave=3.6;arcadeFX.sparks();ui.nitroLabel.textContent='SHOCKWAVE';}else if(result==='PERFECT'){state.nitroOn=true;state.perfect=2.0;ui.nitroLabel.textContent='PERFECT';}else{state.nitroOn=!state.nitroOn;ui.nitroLabel.textContent=state.nitroOn?'NITRO ON':'NITRO';}nitroButton.classList.toggle('pressed',state.nitroOn);});
 document.querySelector('#stunt')?.addEventListener('pointerdown',()=>{if(state.airborne>0){state.stuntSpinRate=state.stuntSpinRate||Math.PI*5;state.stuntDone=true;}});
 document.querySelector('#garage-start')?.addEventListener('click',startRace);
 function renderGarageStats(){const v=VEHICLES[state.selectedCar];const stats={topSpeed:v.topSpeed+state.upgrades[0]*2.2,acceleration:v.acceleration+state.upgrades[1]*2.4,handling:(v.handling+state.upgrades[2]*0.45)*10,nitro:v.nitro+state.upgrades[3]*8};for(const [key,value] of Object.entries(stats)){const el=document.querySelector('[data-stat="'+key+'"]');if(el){el.querySelector('strong').textContent=Math.round(value);el.querySelector('i b').style.width=Math.min(100,value/(key==='topSpeed'?70:key==='acceleration'?40:key==='handling'?75:120)*100)+'%';}}}
@@ -316,7 +317,7 @@ function animate(dtOverride) {
     state.steer=THREE.MathUtils.damp(state.steer,steerInput,vehiclePhysics.stats.handling*2.2,dt);
     const nitroState=nitroSystem.step(dt,state.nitroOn&&state.speed>12);
     state.nitro=nitroState.value;state.shockwave=nitroState.shockwave?nitroSystem.shockwaveTime:0;state.perfect=nitroState.perfect?nitroSystem.perfectTime:0;
-    const nitroMultiplier=nitroState.shockwave?1.9:(state.nitroOn&&state.nitro>0?(state.perfect>0?1.68:1.46):1);
+    const nitroMultiplier=nitroState.shockwave?2.05:(state.nitroOn&&state.nitro>0?(state.perfect>0?1.82:1.62):1);
     const physics=vehiclePhysics.step(player,{gas:state.gas,brake:state.brake,steer:state.steer},dt,{nitroMultiplier,shockwave:nitroState.shockwave,airborne:state.airborne>0});
     const drifting=physics.drifting;state.speed=physics.speed;player.speed=state.speed;
     const maxSpeed=vehiclePhysics.stats.topSpeed*(nitroState.shockwave?1.85:nitroMultiplier);
@@ -335,7 +336,7 @@ function animate(dtOverride) {
       if (!state.driftToastTime) ui.driftToast.classList.remove('show');
     }
     player.position.x+=(physics.lateral*0.22*speedFactor+state.drift*3.4)*dt;if(collisions.guardrail(player.position.x,7.7)&&!nitroState.shockwave){player.position.x=clamp(player.position.x,-7.2,7.2);player.speed*=0.72;state.speed=player.speed;state.steer*=-0.35;crashTime=Math.max(crashTime,0.22);arcadeFX.sparks();}
-    player.position.z -= state.speed * dt * 0.34;
+    player.position.z -= state.speed * dt * 0.46;
     if(state.airborne>0){state.airborne=Math.max(0,state.airborne-dt);state.stuntSpin+=state.stuntSpinRate*dt;player.position.y=0.8+Math.sin((1.1-state.airborne)/1.1*Math.PI)*2.5;state.stuntRoll+=state.steer*dt*4.2;if(state.airborne===0){player.position.y=0;if(state.stuntDone){nitroSystem.add(28);state.nitro=nitroSystem.value;state.driftScore+=500;ui.nitroLabel.textContent='LANDING +NITRO';}state.stuntDone=false;state.stuntSpin=0;state.stuntSpinRate=0;}}
     const stuntAt=[0.42,1.18,2.05];if(state.rampIndex<stuntAt.length&&state.distance>=stuntAt[state.rampIndex]){state.airborne=1.1;state.stuntDone=false;state.stuntRoll=0;state.stuntSpin=0;state.stuntSpinRate=0;state.rampIndex++;arcadeFX.sparks();}
     player.rotation.y = state.stuntSpin - state.steer * 0.16 - state.drift * 0.18;
@@ -344,7 +345,7 @@ function animate(dtOverride) {
     state.distance += state.speed * dt / 3600 * 1.65;
     aiControllers.forEach(ai=>ai.step(dt,state.speed,player.position.x));
     state.nearMissCooldown=Math.max(0,state.nearMissCooldown-dt);
-    traffic.forEach((t,i)=>{t.car.position.z+=state.speed*dt*0.34-(t.speed*11*dt);if(t.car.position.z>13)t.car.position.z=-260-Math.random()*160;t.car.position.x=t.x+Math.sin(clock.elapsedTime*0.22+i)*0.28;const gap=Math.abs(t.car.position.z-player.position.z);const laneGap=Math.abs(t.car.position.x-player.position.x);if(gap<3.2&&laneGap<2.3&&laneGap>1.15&&state.nearMissCooldown===0){nitroSystem.add(12);state.nitro=nitroSystem.value;state.nearMissCooldown=1.2;arcadeFX.sparks();ui.nitroLabel.textContent='NEAR MISS +';}});
+    traffic.forEach((t,i)=>{t.car.position.z+=state.speed*dt*0.46-(t.speed*11*dt);if(t.car.position.z>13)t.car.position.z=-260-Math.random()*160;t.car.position.x=t.x+Math.sin(clock.elapsedTime*0.22+i)*0.28;const gap=Math.abs(t.car.position.z-player.position.z);const laneGap=Math.abs(t.car.position.x-player.position.x);if(gap<3.2&&laneGap<2.3&&laneGap>1.15&&state.nearMissCooldown===0){nitroSystem.add(12);state.nitro=nitroSystem.value;state.nearMissCooldown=1.2;arcadeFX.sparks();ui.nitroLabel.textContent='NEAR MISS +';}});
 
     const collision=collisions.hit(player,[...traffic.map(t=>t.car),...rivals.map(r=>r.car)]);if(collision&&!nitroState.shockwave&&crashTime<=0){player.speed*=0.48;state.speed=player.speed;crashTime=0.85;collision.position.z-=7;ui.nitroLabel.textContent='CRASH!';arcadeFX.sparks();}crashTime=Math.max(0,crashTime-dt);
     camera.fov=THREE.MathUtils.damp(camera.fov,66+Math.max(0,state.speed-25)*0.42+((usingNitro||nitroState.shockwave)?10:0)+(nitroState.shockwave?7:0),5.5,dt);camera.updateProjectionMatrix();
@@ -372,7 +373,7 @@ function animate(dtOverride) {
     camera.position.lerp(new THREE.Vector3(player.position.x * 0.48, 5.2, player.position.z + 10.5), 0.025);
     camera.lookAt(player.position.x * 0.2, 0.8, player.position.z - 9);
   }
-  if(audioContext){engineOsc.frequency.setTargetAtTime(48+state.speed*2.2+(state.nitroOn?35:0),audioContext.currentTime,0.08);engineGain.gain.setTargetAtTime(state.running&&!state.paused?0.035:0.0001,audioContext.currentTime,0.12);tireOsc.frequency.setTargetAtTime(380+Math.abs(state.steer)*260,audioContext.currentTime,0.06);tireGain.gain.setTargetAtTime(state.running&&Math.abs(state.drift)>0.12?0.018:0.0001,audioContext.currentTime,0.08);}
+  if(state.nitro<=0){state.nitroOn=false;nitroButton.classList.remove('pressed');}if(audioContext){engineOsc.frequency.setTargetAtTime(48+state.speed*2.2+(state.nitroOn?35:0),audioContext.currentTime,0.08);engineGain.gain.setTargetAtTime(state.running&&!state.paused?0.035:0.0001,audioContext.currentTime,0.12);tireOsc.frequency.setTargetAtTime(380+Math.abs(state.steer)*260,audioContext.currentTime,0.06);tireGain.gain.setTargetAtTime(state.running&&Math.abs(state.drift)>0.12?0.018:0.0001,audioContext.currentTime,0.08);}
 }
 camera.position.set(0, 5.5, 14);
 camera.lookAt(0, 0.8, -8);
