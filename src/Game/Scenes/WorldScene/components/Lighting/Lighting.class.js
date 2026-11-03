@@ -65,6 +65,12 @@ export default class Lighting {
   }
 
   setEnvironmentMapInstance() {
+    // Environment maps are optional; the game must render without them.
+    if (!this.resources.items.environmentMapTexture) {
+      this.scene.background = new THREE.Color('#96a9ae');
+      this.scene.environment = null;
+      return;
+    }
     this.environmentMap = {
       intensity: 1.0,
       texture: this.resources.items.environmentMapTexture,
