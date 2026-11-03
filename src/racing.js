@@ -316,7 +316,7 @@ function animate(dtOverride) {
     state.steer=THREE.MathUtils.damp(state.steer,steerInput,vehiclePhysics.stats.handling*2.2,dt);
     const nitroState=nitroSystem.step(dt,state.nitroOn&&state.speed>12);
     state.nitro=nitroState.value;state.shockwave=nitroState.shockwave?nitroSystem.shockwaveTime:0;state.perfect=nitroState.perfect?nitroSystem.perfectTime:0;
-    const nitroMultiplier=state.nitroOn&&state.nitro>0?(state.perfect>0?1.55:1.3):1;
+    const nitroMultiplier=nitroState.shockwave?1.9:(state.nitroOn&&state.nitro>0?(state.perfect>0?1.68:1.46):1);
     const physics=vehiclePhysics.step(player,{gas:state.gas,brake:state.brake,steer:state.steer},dt,{nitroMultiplier,shockwave:nitroState.shockwave,airborne:state.airborne>0});
     const drifting=physics.drifting;state.speed=physics.speed;player.speed=state.speed;
     const maxSpeed=vehiclePhysics.stats.topSpeed*(nitroState.shockwave?1.85:nitroMultiplier);
@@ -347,7 +347,7 @@ function animate(dtOverride) {
     traffic.forEach((t,i)=>{t.car.position.z+=state.speed*dt*0.34-(t.speed*11*dt);if(t.car.position.z>13)t.car.position.z=-260-Math.random()*160;t.car.position.x=t.x+Math.sin(clock.elapsedTime*0.22+i)*0.28;const gap=Math.abs(t.car.position.z-player.position.z);const laneGap=Math.abs(t.car.position.x-player.position.x);if(gap<3.2&&laneGap<2.3&&laneGap>1.15&&state.nearMissCooldown===0){nitroSystem.add(12);state.nitro=nitroSystem.value;state.nearMissCooldown=1.2;arcadeFX.sparks();ui.nitroLabel.textContent='NEAR MISS +';}});
 
     const collision=collisions.hit(player,[...traffic.map(t=>t.car),...rivals.map(r=>r.car)]);if(collision&&!nitroState.shockwave&&crashTime<=0){player.speed*=0.48;state.speed=player.speed;crashTime=0.85;collision.position.z-=7;ui.nitroLabel.textContent='CRASH!';arcadeFX.sparks();}crashTime=Math.max(0,crashTime-dt);
-    camera.fov=THREE.MathUtils.damp(camera.fov,66+Math.max(0,state.speed-25)*0.42+(usingNitro?8:0)+(nitroState.shockwave?10:0),4,dt);camera.updateProjectionMatrix();
+    camera.fov=THREE.MathUtils.damp(camera.fov,66+Math.max(0,state.speed-25)*0.42+((usingNitro||nitroState.shockwave)?10:0)+(nitroState.shockwave?7:0),5.5,dt);camera.updateProjectionMatrix();
     const targetCam = new THREE.Vector3(player.position.x * 0.48, 5.4 + state.speed * 0.018, player.position.z + 10.5+state.speed*0.035);
     camera.position.lerp(targetCam, 1 - Math.pow(0.001, dt));
     camera.lookAt(player.position.x * 0.2, 0.8, player.position.z - 9);
@@ -373,10 +373,12 @@ function animate(dtOverride) {
     camera.lookAt(player.position.x * 0.2, 0.8, player.position.z - 9);
   }
   if(audioContext){engineOsc.frequency.setTargetAtTime(48+state.speed*2.2+(state.nitroOn?35:0),audioContext.currentTime,0.08);engineGain.gain.setTargetAtTime(state.running&&!state.paused?0.035:0.0001,audioContext.currentTime,0.12);tireOsc.frequency.setTargetAtTime(380+Math.abs(state.steer)*260,audioContext.currentTime,0.06);tireGain.gain.setTargetAtTime(state.running&&Math.abs(state.drift)>0.12?0.018:0.0001,audioContext.currentTime,0.08);}
-  arcadeFX.render(dt,state.speed,Math.abs(state.drift)>0.08,state.nitroOn,state.shockwave>0);
 }
 camera.position.set(0, 5.5, 14);
 camera.lookAt(0, 0.8, -8);
-const gameLoop=new GameLoop(dt=>animate(dt),()=>{});
+const gameLoop=new GameLoop(
+  dt=>animate(dt),
+  frameDt=>arcadeFX.render(frameDt,state.speed,Math.abs(state.drift)>0.08,state.nitroOn,state.shockwave>0)
+);
 gameLoop.start();
 window.addEventListener('pagehide',()=>{gameLoop.stop();unsubscribeState();},{once:true});
