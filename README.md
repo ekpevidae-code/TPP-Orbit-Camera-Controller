@@ -1,77 +1,65 @@
-# Third Person Camera Controller
+# Velocity Run — game client and API
 
-<img src="./thumbnail.png" width="100%" height="auto">
+## Architecture
 
-A third person camera controller with dual camera modes and cross-platform controls built with Three.js.
+- The Vite/Three.js client is deployed as a static site on Vercel.
+- `server.js` is a separate, persistent Node.js API process. Do not deploy it as a long-running process inside a Vercel static build.
+- PostgreSQL stores accounts, wallets, the D/C/B/A/S car catalogue, owned cars, upgrades, race records, and an immutable-style economy ledger.
+- Prisma runs all purchase and upgrade mutations in serializable transactions. Wallet debits are conditional and owned cars have a unique `(userId, carModelId)` key.
+- The browser never receives database credentials. It sends a short-lived JWT access token to the API.
 
-## Features
+## Required environment
 
-- **Dual Camera Modes**: TPP (Third Person) and Orbit modes with smooth transitions
-- **Cross-Platform Controls**: Desktop keyboard/mouse + mobile touch controls
-- **Virtual Joystick**: Mobile-friendly joystick with tap-to-jump functionality
-- **Visual Feedback**: On-screen buttons highlight when keyboard keys are pressed
-- **Responsive UI**: Clean interface that adapts to different screen sizes
+Copy `.env.example` to `.env` on the API host and set real values:
 
-## Tech Stack
+- `DATABASE_URL`: PostgreSQL connection string.
+- `JWT_SECRET`: at least 32 random characters; keep it private.
+- `CORS_ORIGIN`: exact Vercel frontend origin(s), comma-separated.
+- `PORT`: API listening port.
 
-- **Three.js** - 3D graphics library
-- **Vite** - Build tool and dev server
-- **lil-gui** - Debug interface
-- **SCSS** - Styling
-- **three-perf** - Performance monitoring
-- Built on top of: [threejs-gamedev-template](https://github.com/SahilK-027/threejs-gamedev-template)
+Set `VITE_API_URL` in the Vercel project build environment to the public HTTPS origin of the API. Rebuild the frontend after changing it.
 
-## Getting Started
+## Initialize PostgreSQL
 
-### Prerequisites
+Use Node.js 20 or newer:
 
-- Node.js (v16 or higher)
-- npm or yarn
-
-### Installation
-
-1. Clone the repository
-
-```bash
-git clone <your-repo-url>
-cd TPP-Orbit-Camera-Controller
-```
-
-2. Install dependencies
-
-```bash
+```sh
 npm install
+npx prisma generate
+npx prisma db push
+npm run db:seed
 ```
 
-3. Start the development server
+`db:push` creates/updates the schema directly from `prisma/schema.prisma`. For a team production workflow, generate and review Prisma migrations in a controlled development database before using `prisma migrate deploy`.
 
-```bash
+## Run locally
+
+Terminal 1 (API):
+
+```sh
+npm run api
+```
+
+Terminal 2 (game client):
+
+```sh
 npm run dev
 ```
 
-4. Open your browser and navigate to `http://localhost:5173`
+The API health check is `GET /health`. The client uses `VITE_API_URL`; set it to `http://localhost:4000` for local development.
 
-## Controls
+## API endpoints
 
-### Desktop
+- `POST /api/auth/register` — create account and starter wallet.
+- `POST /api/auth/login` — issue a two-hour bearer token.
+- `GET /api/garage` — return wallet, owned cars, and enabled catalogue.
+- `POST /api/garage/purchase` — purchase a catalogue car; supports `Idempotency-Key`.
+- `POST /api/garage/upgrade` — upgrade one stat for an owned car; supports `Idempotency-Key`.
+- `POST /api/garage/select` — select an owned car.
+- `POST /api/races/results` — store a race record for an owned car.
 
-- **WASD/Arrow Keys** - Move player (buttons highlight when pressed)
-- **Space** - Jump
-- **C Key** - Switch camera modes
-- **Mouse** - Camera rotation (Orbit mode)
+The race result endpoint currently records client-submitted race data and must not be used as a trusted competitive leaderboard or reward authority until server-authoritative race sessions and anti-cheat validation are deployed.
 
-### Mobile
+## Important deployment boundary
 
-- **Virtual Joystick** - Drag to move, tap to jump
-- **Jump/Sprint Buttons** - Dedicated action controls
-- **Camera Toggle** - Switch between TPP/Orbit modes
-- **Touch & Drag** - Camera rotation (Orbit mode)
-
-## Camera Modes
-
-- **TPP Mode**: Camera follows behind player for gameplay
-- **Orbit Mode**: Free camera rotation around player for inspection
-
-
-## License
-This project is for educational and demonstration purposes under the MIT license.
+The repository contains the complete API source and database schema, but the API is not live until a PostgreSQL database and a persistent Node.js host are configured with the environment variables above. The current Vercel deployment serves the game frontend only. No database credentials or hosted database were present in the connected project, so none have been fabricated or committed.
