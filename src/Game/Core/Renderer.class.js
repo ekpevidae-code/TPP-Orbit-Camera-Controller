@@ -18,7 +18,8 @@ export default class Renderer {
 
     this.isMobileDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints || 0) > 0;
     this.setRendererInstance();
-    // Keep diagnostics off the normal HUD; enable them with ?mode=debug.\n    if (this.isMobileDevice && this.isDebugMode) this.createMobileDiagnostics();
+    // Keep diagnostics off the normal HUD; enable them with ?mode=debug.
+    if (this.isMobileDevice && this.isDebugMode) this.createMobileDiagnostics();
 
     if (this.isDebugMode) {
       this.initGUI();
@@ -36,6 +37,14 @@ export default class Renderer {
       NeutralToneMapping: THREE.NeutralToneMapping,
     };
 
+    this.mobileDprMax = this.isMobileDevice ? Math.min(this.sizes.pixelRatio, 1.25) : this.sizes.pixelRatio;
+    this.mobileDprMin = 0.7;
+    this.adaptiveDpr = this.isMobileDevice ? Math.min(this.mobileDprMax, 1.0) : this.sizes.pixelRatio;
+    this.lastFrameTimestamp = performance.now();
+    this.lastScaleCheck = this.lastFrameTimestamp;
+    this.frameSampleCount = 0;
+    this.frameSampleTotal = 0;
+
     this.rendererInstance = new THREE.WebGLRenderer({
       canvas: this.canvas,
       // Avoid expensive MSAA on touch devices.
@@ -48,7 +57,7 @@ export default class Renderer {
     this.rendererInstance.shadowMap.enabled = !this.isMobileDevice;
     this.rendererInstance.shadowMap.type = THREE.PCFShadowMap;
     this.rendererInstance.setSize(this.sizes.width, this.sizes.height);
-    this.rendererInstance.setPixelRatio(this.isMobileDevice ? Math.min(this.sizes.pixelRatio, 1.25) : this.sizes.pixelRatio);
+    this.rendererInstance.setPixelRatio(this.adaptiveDpr);
 
     if (this.isDebugMode) {
       this.setUpPerformanceMonitor();
@@ -74,7 +83,8 @@ export default class Renderer {
       whiteSpace: 'pre',
       pointerEvents: 'none',
     });
-    this.diagnosticPanel.textContent = 'GAME DIAGNOSTICS\nStarting frame monitor…';
+    this.diagnosticPanel.textContent = 'GAME DIAGNOSTICS
+Starting frame monitor…';
     document.body.appendChild(this.diagnosticPanel);
 
     this.diagnosticFrames = 0;
@@ -85,18 +95,21 @@ export default class Renderer {
     this.canvas.addEventListener('webglcontextlost', (event) => {
       event.preventDefault();
       this.diagnosticLost = true;
-      this.diagnosticPanel.textContent = 'WEBGL CONTEXT LOST\nThe phone graphics system stopped the game.';
+      this.diagnosticPanel.textContent = 'WEBGL CONTEXT LOST
+The phone graphics system stopped the game.';
     });
 
     window.addEventListener('error', (event) => {
       if (this.diagnosticPanel) {
-        this.diagnosticPanel.textContent = 'JAVASCRIPT ERROR\n' + String(event.message || 'Unknown error').slice(0, 140);
+        this.diagnosticPanel.textContent = 'JAVASCRIPT ERROR
+' + String(event.message || 'Unknown error').slice(0, 140);
       }
     });
 
     window.addEventListener('unhandledrejection', (event) => {
       if (this.diagnosticPanel) {
-        this.diagnosticPanel.textContent = 'ASYNC ERROR\n' + String(event.reason || 'Unknown rejection').slice(0, 140);
+        this.diagnosticPanel.textContent = 'ASYNC ERROR
+' + String(event.reason || 'Unknown rejection').slice(0, 140);
       }
     });
   }
@@ -125,7 +138,9 @@ export default class Renderer {
       'Textures: ' + info.memory.textures,
       'JS heap: ' + heap,
       'Shadows: ' + (this.rendererInstance.shadowMap.enabled ? 'ON' : 'OFF'),
-    ].join('\n');
+      'Render scale: ' + this.rendererInstance.getPixelRatio().toFixed(2),
+    ].join('
+');
   }
 
   resize() {
