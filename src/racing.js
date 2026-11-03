@@ -309,7 +309,8 @@ function animate(dtOverride) {
   const dt=dtOverride??Math.min(clock.getDelta(),0.04);
   if(gameStates.current===GAME_STATES.COUNTDOWN){countdownRemaining-=dt;ui.message.querySelector('strong').textContent=countdownRemaining>1.8?'3':countdownRemaining>0.9?'2':countdownRemaining>0?'1':'GO!';if(countdownRemaining<=0){gameStates.transition(GAME_STATES.RACING);ui.message.style.opacity='0';}}
   if (gameStates.current===GAME_STATES.RACING && state.running && !state.paused && !state.finished) {
-    const usingNitro=state.nitroOn&&nitroSystem.value>0;\n    const steerInput=(state.right?1:0)-(state.left?1:0);
+    const usingNitro=state.nitroOn&&nitroSystem.value>0;
+    const steerInput=(state.right?1:0)-(state.left?1:0);
     state.steer=THREE.MathUtils.damp(state.steer,steerInput,vehiclePhysics.stats.handling*2.2,dt);
     const nitroState=nitroSystem.step(dt,state.nitroOn&&state.speed>12);
     state.nitro=nitroState.value;state.shockwave=nitroState.shockwave?nitroSystem.shockwaveTime:0;state.perfect=nitroState.perfect?nitroSystem.perfectTime:0;
@@ -375,4 +376,5 @@ function animate(dtOverride) {
 camera.position.set(0, 5.5, 14);
 camera.lookAt(0, 0.8, -8);
 const gameLoop=new GameLoop(dt=>animate(dt),()=>{});
-gameLoop.start();\nwindow.addEventListener('pagehide',()=>{gameLoop.stop();unsubscribeState();},{once:true});
+gameLoop.start();
+window.addEventListener('pagehide',()=>{gameLoop.stop();unsubscribeState();},{once:true});
