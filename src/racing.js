@@ -17,9 +17,9 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x9bb5c8);
 scene.fog = new THREE.Fog(0x9bb5c8, 65, 230);
 const camera = new THREE.PerspectiveCamera(66, 1, 0.1, 500);
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.6));
-renderer.shadowMap.enabled = true;
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: window.innerWidth >= 800, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, window.innerWidth < 800 ? 1.15 : 1.6));
+renderer.shadowMap.enabled = window.innerWidth >= 800;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 
