@@ -4,9 +4,6 @@ import PerformanceMonitor from '../Utils/PerformanceMonitor';
 
 export default class Renderer {
   constructor() {
-    /**
-     * Game references
-     */
     this.game = Game.getInstance();
     this.canvas = this.game.canvas;
     this.sizes = this.game.sizes;
@@ -15,15 +12,10 @@ export default class Renderer {
     this.renderer = this.game.renderer;
     this.isDebugMode = this.game.isDebugMode;
     this.debug = this.game.debug;
-
     this.isMobileDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints || 0) > 0;
     this.setRendererInstance();
-    // Keep diagnostics off the normal HUD; enable them with ?mode=debug.
     if (this.isMobileDevice && this.isDebugMode) this.createMobileDiagnostics();
-
-    if (this.isDebugMode) {
-      this.initGUI();
-    }
+    if (this.isDebugMode) this.initGUI();
   }
 
   setRendererInstance() {
@@ -47,21 +39,16 @@ export default class Renderer {
 
     this.rendererInstance = new THREE.WebGLRenderer({
       canvas: this.canvas,
-      // Avoid expensive MSAA on touch devices.
       antialias: !this.isMobileDevice,
     });
-
     this.rendererInstance.toneMapping = THREE.NeutralToneMapping;
     this.rendererInstance.toneMappingExposure = 1.75;
-    // Disable real-time shadow maps on phones until measured hardware can sustain them.
     this.rendererInstance.shadowMap.enabled = !this.isMobileDevice;
     this.rendererInstance.shadowMap.type = THREE.PCFShadowMap;
-    this.rendererInstance.setSize(this.sizes.width, this.sizes.height);
     this.rendererInstance.setPixelRatio(this.adaptiveDpr);
+    this.rendererInstance.setSize(this.sizes.width, this.sizes.height);
 
-    if (this.isDebugMode) {
-      this.setUpPerformanceMonitor();
-    }
+    if (this.isDebugMode) this.setUpPerformanceMonitor();
   }
 
   setUpPerformanceMonitor() {
@@ -83,8 +70,7 @@ export default class Renderer {
       whiteSpace: 'pre',
       pointerEvents: 'none',
     });
-    this.diagnosticPanel.textContent = 'GAME DIAGNOSTICS
-Starting frame monitor…';
+    this.diagnosticPanel.textContent = 'GAME DIAGNOSTICS\nStarting frame monitor…';
     document.body.appendChild(this.diagnosticPanel);
 
     this.diagnosticFrames = 0;
@@ -95,21 +81,18 @@ Starting frame monitor…';
     this.canvas.addEventListener('webglcontextlost', (event) => {
       event.preventDefault();
       this.diagnosticLost = true;
-      this.diagnosticPanel.textContent = 'WEBGL CONTEXT LOST
-The phone graphics system stopped the game.';
+      this.diagnosticPanel.textContent = 'WEBGL CONTEXT LOST\nThe phone graphics system stopped the game.';
     });
 
     window.addEventListener('error', (event) => {
       if (this.diagnosticPanel) {
-        this.diagnosticPanel.textContent = 'JAVASCRIPT ERROR
-' + String(event.message || 'Unknown error').slice(0, 140);
+        this.diagnosticPanel.textContent = 'JAVASCRIPT ERROR\n' + String(event.message || 'Unknown error').slice(0, 140);
       }
     });
 
     window.addEventListener('unhandledrejection', (event) => {
       if (this.diagnosticPanel) {
-        this.diagnosticPanel.textContent = 'ASYNC ERROR
-' + String(event.reason || 'Unknown rejection').slice(0, 140);
+        this.diagnosticPanel.textContent = 'ASYNC ERROR\n' + String(event.reason || 'Unknown rejection').slice(0, 140);
       }
     });
   }
@@ -139,26 +122,48 @@ The phone graphics system stopped the game.';
       'JS heap: ' + heap,
       'Shadows: ' + (this.rendererInstance.shadowMap.enabled ? 'ON' : 'OFF'),
       'Render scale: ' + this.rendererInstance.getPixelRatio().toFixed(2),
-    ].join('
-');
+    ].join('\n');
+  }
+
+  updateAdaptiveResolution() {
+    if (!this.isMobileDevice) return;
+    const now = performance.now();
+    const frameMs = now - this.lastFrameTimestamp;
+    this.lastFrameTimestamp = now;
+    if (frameMs > 0 && frameMs < 1000) {
+      this.frameSampleCount += 1;
+      this.frameSampleTotal += frameMs;
+    }
+    if (now - this.lastScaleCheck < 2200 || this.frameSampleCount < 8) return;
+
+    const averageFrameMs = this.frameSampleTotal / this.frameSampleCount;
+    const previousDpr = this.adaptiveDpr;
+    if (averageFrameMs > 42 && this.adaptiveDpr > this.mobileDprMin) {
+      this.adaptiveDpr = Math.max(this.mobileDprMin, this.adaptiveDpr - 0.1);
+    } else if (averageFrameMs < 28 && this.adaptiveDpr < this.mobileDprMax) {
+      this.adaptiveDpr = Math.min(this.mobileDprMax, this.adaptiveDpr + 0.05);
+    }
+
+    this.frameSampleCount = 0;
+    this.frameSampleTotal = 0;
+    this.lastScaleCheck = now;
+    if (Math.abs(previousDpr - this.adaptiveDpr) >= 0.01) {
+      this.rendererInstance.setPixelRatio(this.adaptiveDpr);
+      this.rendererInstance.setSize(this.sizes.width, this.sizes.height);
+    }
   }
 
   resize() {
+    this.rendererInstance.setPixelRatio(this.adaptiveDpr);
     this.rendererInstance.setSize(this.sizes.width, this.sizes.height);
-    this.rendererInstance.setPixelRatio(this.isMobileDevice ? Math.min(this.sizes.pixelRatio, 1.25) : this.sizes.pixelRatio);
   }
 
   update() {
-    if (this.isDebugMode) {
-      this.perf.beginFrame();
-    }
-
+    this.updateAdaptiveResolution();
+    if (this.isDebugMode) this.perf.beginFrame();
     this.rendererInstance.render(this.scene, this.camera.cameraInstance);
     this.updateMobileDiagnostics();
-
-    if (this.isDebugMode) {
-      this.perf.endFrame();
-    }
+    if (this.isDebugMode) this.perf.endFrame();
   }
 
   initGUI() {
