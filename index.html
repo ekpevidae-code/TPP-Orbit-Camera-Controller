@@ -1,87 +1,45 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <link rel="stylesheet" href="./src/style.scss" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <title>Open World Action Game</title>
-  </head>
-  <body>
-    <div id="progress"><div id="bar"></div></div>
-    <button id="rotate-screen-btn" type="button">ROTATE TO LANDSCAPE</button>
-
-    <div id="mini-map-wrap" aria-label="Nearby radar">
-      <canvas id="mini-map" width="144" height="144"></canvas>
-      <span class="radar-label">CITY RADAR</span>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
+  <meta name="theme-color" content="#090e18" />
+  <title>Velocity Run — 3D Racing</title>
+  <link rel="stylesheet" href="/src/racing.css" />
+</head>
+<body>
+  <main id="game">
+    <canvas id="race-canvas" aria-label="3D racing game"></canvas>
+    <div class="topbar">
+      <div class="brand"><span class="brand-mark">V</span><span>VELOCITY <b>RUN</b></span></div>
+      <div class="race-status"><span class="live-dot"></span><span id="race-state">READY TO RACE</span></div>
+      <button id="pause" class="icon-btn" aria-label="Pause">Ⅱ</button>
     </div>
-    <button id="pause-btn" type="button" aria-label="Pause game">Ⅱ</button>
-    <div id="pause-menu" aria-hidden="true">
-      <div class="pause-card">
-        <div class="pause-kicker">OPEN WORLD</div>
-        <h2>PAUSED</h2>
-        <p>Your game is waiting.</p>
-        <button id="resume-btn" type="button">RESUME GAME</button>
+    <section class="hud" aria-live="polite">
+      <div class="speed-box"><div class="eyebrow">SPEED</div><div class="speed-line"><strong id="speed">000</strong><span>KM/H</span></div></div>
+      <div class="race-box"><div class="eyebrow">DISTANCE</div><strong id="distance">0.0 <small>KM</small></strong><div class="progress-track"><i id="progress"></i></div></div>
+      <div class="position-box"><div class="eyebrow">POSITION</div><strong id="position">1<span>ST</span></strong></div>
+    </section>
+    <div class="center-message" id="message"><strong>READY?</strong><span>Tap RACE to start your run</span></div>
+    <div class="bottom-hud">
+      <div class="steering">
+        <button class="control steer" id="left" aria-label="Steer left">‹</button>
+        <button class="control steer" id="right" aria-label="Steer right">›</button>
+      </div>
+      <div class="actions">
+        <button class="control brake" id="brake">BRAKE</button>
+        <button class="control nitro" id="nitro"><span>⚡</span> NITRO</button>
+        <button class="control gas" id="gas">RACE <span>›</span></button>
       </div>
     </div>
-    <!-- Camera Mode Toggle -->
-    <div id="camera-controls">
-      <div class="camera-mode-selector">
-        <button id="tpp-mode-btn" class="mode-btn active" data-mode="tpp">
-          <span class="mode-icon">👤</span>
-          <span class="mode-label">TPP</span>
-        </button>
-        <button id="orbit-mode-btn" class="mode-btn" data-mode="orbit">
-          <span class="mode-icon">🔄</span>
-          <span class="mode-label">Orbit</span>
-        </button>
-      </div>
+    <div class="footer-note"><span>TOUCH CONTROLS</span><span>WASD / ARROWS ALSO WORK</span></div>
+    <div class="pause-layer hidden" id="pause-layer">
+      <div class="pause-card"><div class="eyebrow">VELOCITY RUN</div><h1>PAUSED</h1><p>Your race is waiting.</p><button id="resume">RESUME RACE</button><button id="restart" class="secondary">RESTART</button></div>
     </div>
-
-    <!-- Mobile Controls -->
-    <div id="mobile-controls">
-      <!-- Virtual Joystick -->
-      <div id="virtual-joystick" class="joystick-container">
-        <div class="joystick-base">
-          <div class="joystick-knob" id="joystick-knob"></div>
-        </div>
-      </div>
-
-      <!-- Fallback WASD Controls (can be hidden) -->
-      <div id="movement-pad" class="fallback-controls">
-        <button class="control-btn" id="btn-w" data-key="KeyW">W</button>
-        <div class="control-row">
-          <button class="control-btn" id="btn-a" data-key="KeyA">A</button>
-          <button class="control-btn" id="btn-s" data-key="KeyS">S</button>
-          <button class="control-btn" id="btn-d" data-key="KeyD">D</button>
-        </div>
-
-        <button class="control-btn space-btn" id="btn-space" data-key="Space">
-          JUMP (SPACE)
-        </button>
-        <button
-          class="control-btn sprint-btn"
-          id="btn-sprint"
-          data-key="ShiftLeft"
-        >
-          SPRINT (SHIFT)
-        </button>
-      </div>
+    <div class="finish-layer hidden" id="finish-layer">
+      <div class="pause-card"><div class="eyebrow">RACE COMPLETE</div><h1 id="finish-title">FINISH!</h1><p id="finish-copy">Great driving.</p><button id="again">RACE AGAIN</button></div>
     </div>
-
-    <div id="wanted-level" class="wanted-level">WANTED  ☆☆☆☆☆</div>
-    <button id="crime-btn" class="crime-btn" type="button">COMMIT CRIME</button>
-    <div id="aim-reticle" class="aim-reticle" aria-hidden="true"><span></span></div>
-    <div id="ammo-hud" class="ammo-hud">PISTOL 12 / 60</div>
-    <button id="jump-btn" class="hud-action jump-btn" type="button">JUMP</button>
-    <button id="gas-btn" class="hud-action gas-btn" type="button">GAS</button>
-    <button id="brake-btn" class="hud-action brake-btn" type="button">BRAKE</button>
-    <button id="fire-btn" class="combat-btn fire-btn" type="button">FIRE</button>
-    <button id="reload-btn" class="combat-btn reload-btn" type="button">RELOAD</button>
-    <button id="run-btn" class="run-btn" type="button">RUN</button>
-    <button id="vehicle-btn" class="vehicle-btn" type="button">ENTER CAR</button>
-
-    <canvas id="three"></canvas>
-    <script type="module" src="/src/index.js"></script>
-  </body>
+  </main>
+  <script type="module" src="/src/racing.js"></script>
+</body>
 </html>
