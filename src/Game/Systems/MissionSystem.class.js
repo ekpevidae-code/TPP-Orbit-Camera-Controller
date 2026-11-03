@@ -13,6 +13,7 @@ export default class MissionSystem {
     this.busy = false;
     this.startActionId = null;
     this.completeActionId = null;
+    this.retryCooldown = 0;
     this.createCheckpoint();
     this.createHud();
     this.render();
@@ -146,6 +147,7 @@ export default class MissionSystem {
       this.render();
       this.setMessage("Mission complete · +$" + Number(result.reward_cash || 0).toLocaleString());
     } catch (error) {
+      this.retryCooldown = 2;
       this.setMessage(error.message || "Mission reward could not be saved. Try again.", true);
     } finally {
       this.busy = false;
@@ -156,6 +158,10 @@ export default class MissionSystem {
     if (!this.marker || !this.marker.visible) return;
     this.marker.rotation.y += Math.min(this.game.time.delta || 0, 0.05) * 0.45;
     if (this.status !== "active" || this.busy) return;
+    if (this.retryCooldown > 0) {
+      this.retryCooldown = Math.max(0, this.retryCooldown - (this.game.time.delta || 0.016));
+      return;
+    }
     const vehicle = this.game.world.vehicle;
     if (vehicle?.isDriving && vehicle.car.position.distanceTo(this.target) <= this.radius) {
       this.complete();
