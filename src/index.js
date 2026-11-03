@@ -36,14 +36,13 @@ if (isTouchDevice) {
 }
 
 let startupTimedOut = false;
+let gameStarted = false;
+const resources = new ResourceLoader(ASSETS);
 const startupTimer = setTimeout(() => {
   startupTimedOut = true;
-  if (startupPanel) {
-    startupPanel.textContent = 'ASSET LOADING TIMEOUT\nThe game has not finished loading after 45 seconds.\n' + startupPanel.textContent;
-  }
-}, 45000);
-
-const resources = new ResourceLoader(ASSETS);
+  if (startupPanel) startupPanel.textContent = 'STARTING WITH MOBILE FALLBACK\\nA remote character asset is slow. Starting the game without waiting…';
+  resources.trigger('loaded', { itemsLoaded: resources.loaded || 0, itemsTotal: resources.toLoad, percent: 100, fallback: true });
+}, 8000);
 
 // Debug mode is enabled only when URL has ?mode=debug
 const isDebugMode =
