@@ -145,6 +145,7 @@ export default class GameSessionController {
     await this.backend.bootstrap("Player");
     const state = await this.backend.load();
     this.applyLoadedState(state);
+    this.game.world?.missions?.applyPlayerMissions(state.missions || []);
     this.playtimeSeconds = Math.max(0, Number(state.save?.playtime_seconds || 0));
     this.connected = true;
     this.form.hidden = true;
