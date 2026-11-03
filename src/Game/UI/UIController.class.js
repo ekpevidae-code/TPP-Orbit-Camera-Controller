@@ -6,11 +6,95 @@ export default class UIController {
     this.inputManager = this.game.inputManager;
     
     this.initializeCameraToggle();
+    this.initializeHudExtras();
     this.initializeLandscapeMode();
     this.initializeMobileControls();
     this.initializeVirtualJoystick();
     this.initializeKeyboardVisualFeedback();
     this.updateCameraModeButtons();
+  }
+
+  initializeHudExtras() {
+    this.pauseButton = document.getElementById('pause-btn');
+    this.pauseMenu = document.getElementById('pause-menu');
+    const resumeButton = document.getElementById('resume-btn');
+    const setPaused = (paused) => {
+      this.game.isPaused = paused;
+      if (this.pauseMenu) {
+        this.pauseMenu.classList.toggle('open', paused);
+        this.pauseMenu.setAttribute('aria-hidden', paused ? 'false' : 'true');
+      }
+    };
+    if (this.pauseButton) this.pauseButton.addEventListener('click', () => setPaused(!this.game.isPaused));
+    if (resumeButton) resumeButton.addEventListener('click', () => setPaused(false));
+    window.addEventListener('keydown', (event) => {
+      if (event.code === 'Escape' && !event.repeat) setPaused(!this.game.isPaused);
+    });
+
+    const bindHold = (id, keyCode) => {
+      const button = document.getElementById(id);
+      if (!button) return;
+      let pointerId = null;
+      const press = (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        pointerId = event.pointerId;
+        try { button.setPointerCapture(pointerId); } catch (_) {}
+        button.classList.add('pressed');
+        this.inputManager.onKeyDown({ keyCode, preventDefault() {} });
+      };
+      const release = (event) => {
+        if (pointerId === null || (event.pointerId !== undefined && event.pointerId !== pointerId)) return;
+        pointerId = null;
+        button.classList.remove('pressed');
+        this.inputManager.onKeyUp({ keyCode, preventDefault() {} });
+      };
+      button.addEventListener('pointerdown', press);
+      ['pointerup', 'pointercancel', 'lostpointercapture'].forEach((type) => button.addEventListener(type, release));
+    };
+    bindHold('jump-btn', 32);
+    bindHold('gas-btn', 87);
+    bindHold('brake-btn', 83);
+
+    this.miniMap = document.getElementById('mini-map');
+    this.miniMapContext = this.miniMap ? this.miniMap.getContext('2d') : null;
+  }
+
+  updateMiniMap() {
+    if (!this.miniMapContext || !this.game.world || !this.game.world.player) return;
+    const ctx = this.miniMapContext;
+    const size = this.miniMap.width;
+    const center = size / 2;
+    const radius = size * 0.44;
+    const player = this.game.world.vehicle && this.game.world.vehicle.isDriving
+      ? this.game.world.vehicle.car : this.game.world.player.player;
+    if (!player) return;
+    ctx.clearRect(0, 0, size, size);
+    ctx.save();
+    ctx.beginPath(); ctx.arc(center, center, radius, 0, Math.PI * 2); ctx.clip();
+    ctx.fillStyle = 'rgba(13,25,34,.94)'; ctx.fillRect(0, 0, size, size);
+    ctx.strokeStyle = 'rgba(190,215,225,.13)'; ctx.lineWidth = 1;
+    for (let i = -2; i <= 2; i++) {
+      ctx.beginPath(); ctx.moveTo(center + i * 22, 0); ctx.lineTo(center + i * 22, size); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, center + i * 22); ctx.lineTo(size, center + i * 22); ctx.stroke();
+    }
+    const drawDot = (object, color, dotSize) => {
+      if (!object || !object.position) return;
+      const dx = object.position.x - player.position.x;
+      const dz = object.position.z - player.position.z;
+      const scale = 0.72;
+      const x = center + dx * scale;
+      const y = center + dz * scale;
+      if (Math.hypot(x - center, y - center) > radius - 4) return;
+      ctx.fillStyle = color; ctx.beginPath(); ctx.arc(x, y, dotSize, 0, Math.PI * 2); ctx.fill();
+    };
+    const world = this.game.world;
+    if (world.traffic && Array.isArray(world.traffic.cars)) world.traffic.cars.forEach((item) => drawDot(item.car || item, '#d5dce0', 2.2));
+    if (world.police) drawDot(world.police.car, '#f5c94e', 3.2);
+    if (world.vehicle && !world.vehicle.isDriving) drawDot(world.vehicle.car, '#65c9a0', 3);
+    ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(center, center, 4, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#69c8a4'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(center, center, 7, 0, Math.PI * 2); ctx.stroke();
+    ctx.restore();
   }
 
   initializeLandscapeMode() {
@@ -198,6 +282,7 @@ export default class UIController {
   }
 
   update() {
+    this.updateMiniMap();
     // Update camera mode buttons if transitioning
     if (this.game.camera.isTransitioning) {
       this.updateCameraModeButtons();
