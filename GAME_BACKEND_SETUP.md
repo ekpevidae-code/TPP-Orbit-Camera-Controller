@@ -9,7 +9,9 @@
 ## Connected game architecture
 - The browser game owns per-frame movement, camera, animation, collisions, traffic and police simulation.
 - Supabase owns durable identity, cloud checkpoint, wallet, inventory, vehicle ownership, mission progress, item/vehicle catalogues and transaction history.
-- The game session controller signs players in, bootstraps a player profile, loads cloud state, restores checkpoint position/vehicle/ammunition, and saves checkpoints periodically.
+- The game session controller signs players in, bootstraps a player profile and starter kit, restores checkpoint position/vehicle/ammunition, loads owned-vehicle and mission records, and saves checkpoints periodically.
+- The first-drive mission reads its target and reward from mission_definitions; completion updates the mission, wallet, and ledger in one transaction.
+- World ammo pickups call the inventory transaction and update the live reserve-ammo HUD only after the server confirms the item quantity.
 - No per-frame movement or physics data is sent to the database.
 
 ## Relational model
@@ -42,8 +44,8 @@ Mission completion changes mission status, updates the wallet and writes the wal
 - Security advisor: no remaining security findings after deny policy added for action receipts
 - Edge Function: deployed; latest version 5, JWT verification enabled
 - Game source: client adapter and session controller committed
-- Automated production build workflow: added; wait for its run result before claiming build success
-- End-to-end sign-up, cloud restore/save, inventory pickup and mission reward tests still need a real test account and in-game mission/pickup triggers
+- Automated production build workflow: added; production build has passed on recent commits, with the latest small changes queued for another run
+- Runtime account sign-in, cloud restore/save, pickup collection and mission payout still need a real in-game test account/device run; the SQL transaction smoke test has passed
 
 ## Not a high-frequency multiplayer server
 This is a persistent-player backend, not a dedicated authoritative 3D simulation server. A shared real-time open world needs a separate game server with client prediction/interpolation, server authority and replication. Supabase should not receive character or vehicle transforms every frame.
