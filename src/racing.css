@@ -6,3 +6,29 @@
 
 .nitro-track{position:relative}.nitro-sweetspot{position:absolute;left:68%;width:22%;top:-2px;height:9px;border:1px solid #ffe28b;border-radius:3px;background:#fff0a633;box-shadow:0 0 8px #ffe28b88;pointer-events:none}
 .garage-stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:15px 0}.garage-stats>div{display:grid;grid-template-columns:1fr auto;gap:5px 8px;align-items:center;font-size:8px;color:#b9c8d9}.garage-stats i{grid-column:1/3;height:5px;background:#ffffff1c;border-radius:5px;overflow:hidden}.garage-stats i b{display:block;height:100%;width:50%;background:linear-gradient(90deg,#27b9ed,#ffe18b)}.garage-stats strong{color:#fff;font-size:10px}
+
+
+/* Mobile racing HUD refinements */
+.orientation-gate{display:none;position:fixed;inset:0;z-index:1000;align-items:center;justify-content:center;padding:28px;background:radial-gradient(ellipse at 50% 35%,#1d3852 0%,#07101d 72%);text-align:center}
+.orientation-card{width:min(100%,360px);padding:30px 24px;border:1px solid #70d9ff55;border-radius:18px;background:#091827ed;box-shadow:0 18px 65px #0009}
+.orientation-icon{display:grid;place-items:center;width:64px;height:64px;margin:0 auto 18px;border:2px solid #69d8ff;border-radius:50%;font-size:38px;color:#8be6ff}
+.orientation-card strong{display:block;font-size:20px;letter-spacing:1.5px;color:#fff}
+.orientation-card p{margin:12px 0 0;color:#b8c8da;font-size:13px;line-height:1.6}
+@media (orientation:portrait) and (pointer:coarse){.orientation-gate{display:flex}}
+@media (orientation:landscape) and (pointer:coarse){
+  .topbar{padding-top:calc(env(safe-area-inset-top) + 5px);padding-bottom:4px}
+  .hud{top:52px;left:12px;right:12px;max-width:420px;gap:6px}
+  .speed-box,.race-box,.position-box{padding:6px 9px}
+  .speed-line strong{font-size:clamp(23px,5vw,31px)}
+  .race-box>strong{font-size:18px}
+  .position-box strong{font-size:22px}
+  .bottom-hud{bottom:calc(env(safe-area-inset-bottom) + 15px);padding:0 12px}
+  .control{height:52px;min-width:54px;border-radius:11px}
+  .steer{width:58px;font-size:32px}
+  .actions{gap:6px}
+  .brake,.nitro{padding:0 9px}
+  .gas{min-width:74px}
+  .nitro-meter{bottom:calc(env(safe-area-inset-bottom) + 78px);width:min(200px,34vw)}
+  .stunt-control{right:12px;bottom:calc(env(safe-area-inset-bottom) + 76px)}
+  .footer-note{bottom:calc(env(safe-area-inset-bottom) + 2px)}
+}
