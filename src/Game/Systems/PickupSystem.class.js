@@ -37,12 +37,13 @@ export default class PickupSystem {
     root.add(glow);
     this.scene.add(root);
     this.pickups.push({
-      id: crypto.randomUUID(),
+      pendingActionId: null,
       itemCode,
       quantity,
       root,
       available: true,
-      respawn: 0,\n      pendingActionId: null,
+      respawn: 0,
+      pendingActionId: null,
     });
   }
 
@@ -82,7 +83,7 @@ export default class PickupSystem {
       const result = await session.backend.addInventoryItem(
         pickup.itemCode,
         pickup.quantity,
-        pickup.id
+        pickup.pendingActionId || (pickup.pendingActionId = crypto.randomUUID())
       );
       const added = Math.max(0, Number(result.added_quantity || 0));
       if (added > 0) {
@@ -96,11 +97,14 @@ export default class PickupSystem {
         else inventory.push({ item_code: pickup.itemCode, quantity: result.quantity });
         cloud.inventory = inventory;
         this.game.playerCloudState = cloud;
-        pickup.pendingActionId = null;\n        pickup.available = false;
+        pickup.pendingActionId = null;
+        pickup.pendingActionId = null;
+        pickup.available = false;
         pickup.root.visible = false;
         pickup.respawn = 45;
         this.setStatus("+" + added + " ammunition added to inventory.");
       } else {
+        pickup.pendingActionId = null;
         this.setStatus("Your ammunition stack is already full.", true);
       }
     } catch (error) {
