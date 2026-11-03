@@ -158,11 +158,11 @@ function makeCar(color = 0xe64b25) {
   box(root, 1.92, 0.12, 0.75, bodyMat, 0, 1.0, -1.57);
   box(root, 1.95, 0.12, 0.16, mats.dark, 0, 0.5, 2.03);
   const headLampMat = new THREE.MeshStandardMaterial({ color: 0xe8f6ff, emissive: 0x9ecfff, emissiveIntensity: 1.2 });
-  box(root, 0.52, 0.12, 0.08, headLampMat, -0.62, 0.78, 2.05, false);
-  box(root, 0.52, 0.12, 0.08, headLampMat, 0.62, 0.78, 2.05, false);
+  box(root, 0.52, 0.12, 0.08, headLampMat, -0.62, 0.78, -2.05, false);
+  box(root, 0.52, 0.12, 0.08, headLampMat, 0.62, 0.78, -2.05, false);
   const tailMat = new THREE.MeshStandardMaterial({ color: 0xff3024, emissive: 0xb20b06, emissiveIntensity: 1.1 });
-  box(root, 0.58, 0.12, 0.08, tailMat, -0.62, 0.8, -2.05, false);
-  box(root, 0.58, 0.12, 0.08, tailMat, 0.62, 0.8, -2.05, false);
+  box(root, 0.58, 0.12, 0.08, tailMat, -0.62, 0.8, 2.05, false);
+  box(root, 0.58, 0.12, 0.08, tailMat, 0.62, 0.8, 2.05, false);
   for (const x of [-1.03, 1.03]) {
     for (const z of [-1.28, 1.28]) {
       const wheel = new THREE.Group();
@@ -174,13 +174,13 @@ function makeCar(color = 0xe64b25) {
       wheel.add(rim);
       wheel.position.set(x, 0.48, z);
       root.add(wheel);
-      if (z > 0) wheel.userData.front = true;
+      if (z < 0) wheel.userData.front = true;
       (root.userData.wheels ||= []).push(wheel);
     }
   }
-  const wing = box(root, 1.85, 0.09, 0.3, mats.dark, 0, 1.42, -1.8);
-  box(root, 0.1, 0.4, 0.1, mats.dark, -0.65, 1.22, -1.8);
-  box(root, 0.1, 0.4, 0.1, mats.dark, 0.65, 1.22, -1.8);
+  const wing = box(root, 1.85, 0.09, 0.3, mats.dark, 0, 1.42, 1.8);
+  box(root, 0.1, 0.4, 0.1, mats.dark, -0.65, 1.22, 1.8);
+  box(root, 0.1, 0.4, 0.1, mats.dark, 0.65, 1.22, 1.8);
   root.position.y = 0;
   scene.add(root);
   return root;
