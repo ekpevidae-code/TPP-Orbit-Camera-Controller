@@ -60,7 +60,7 @@ function prismaCode(error: unknown, code: string): boolean {
 }
 
 function replayResult(
-  entry: { amount: bigint; currency: Currency; balanceAfter: bigint; referenceId: string | null; metadata: Prisma.JsonValue },
+  entry: { amount: bigint; currency: Currency; reason: LedgerReason; balanceAfter: bigint; referenceId: string | null; metadata: Prisma.JsonValue },
   request: UpgradeRequest
 ): UpgradeResult {
   const metadata = entry.metadata;
@@ -69,16 +69,18 @@ function replayResult(
     entry.referenceId !== request.ownedCarId ||
     !metadata ||
     typeof metadata !== "object" ||
-    Array.isArray(metadata) ||
-    metadata.stat !== request.stat ||
-    typeof metadata.newLevel !== "number"
+    Array.isArray(metadata)
   ) {
+    throw new Error("IDEMPOTENCY_KEY_CONFLICT");
+  }
+  const record = metadata as Prisma.JsonObject;
+  if (record.stat !== request.stat || typeof record.newLevel !== "number") {
     throw new Error("IDEMPOTENCY_KEY_CONFLICT");
   }
   return {
     ownedCarId: request.ownedCarId,
     stat: request.stat,
-    newLevel: metadata.newLevel,
+    newLevel: record.newLevel,
     charged: (-entry.amount).toString(),
     currency: entry.currency,
     balanceAfter: entry.balanceAfter.toString()
