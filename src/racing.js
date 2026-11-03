@@ -196,7 +196,15 @@ const rivals = [
   { car: makeCar(0xe6e8e9), x: 3.3, z: -48, speed: 0.84 },
   { car: makeCar(0x242a35), x: -1.8, z: -72, speed: 0.8 }
 ];
+
 rivals.forEach(r => r.car.position.set(r.x, 0, r.z));
+// Civilian traffic is deliberately slower and uses the outside lanes.
+const traffic=[{car:makeCar(0x68727e),x:-5.1,z:-95,speed:0.58},{car:makeCar(0xd7d1c3),x:5.0,z:-165,speed:0.62},{car:makeCar(0x314c54),x:1.7,z:-230,speed:0.55}];
+traffic.forEach(t=>{t.car.scale.setScalar(0.88);t.car.position.set(t.x,0,t.z);});
+// Visible launch ramps line up with the stunt checkpoints.
+const ramps=[-300,-850,-1470];
+ramps.forEach((z,i)=>{const ramp=new THREE.Mesh(new THREE.BoxGeometry(6.2,0.7,7),new THREE.MeshStandardMaterial({color:i===1?0x21b9d5:0xffa43b,metalness:0.35,roughness:0.3,emissive:i===1?0x063d48:0x3a1600,emissiveIntensity:0.35}));ramp.position.set(i===1?2.5:-2.3,0.42,z);ramp.rotation.x=-0.16;ramp.castShadow=true;ramp.receiveShadow=true;scene.add(ramp);});
+
 
 const state = { speed: 0, steer: 0, drift: 0, nitro: 100, distance: 0, driftScore: 0, driftTime: 0, driftToastTime: 0, running: false, paused: false, finished: false, gas: false, brake: false, left: false, right: false, nitroOn: false, last: 0, shake: 0, airborne: 0, stuntSpin: 0, stuntRoll: 0, stuntDone: false, nitroTap: 0, nitroMode: 0, shockwave: 0, perfect: 0, rampIndex: 0, nearMissCooldown: 0, selectedCar: 0, upgrades: [0,0,0,0] };
 const arcadeFX = createArcadeFX(scene,camera,renderer,player);
@@ -317,7 +325,7 @@ function animate() {
     player.position.x += (state.steer * speedFactor * 7.2 + state.drift * 3.4) * dt;
     player.position.x = clamp(player.position.x, -6.7, 6.7);
     player.position.z -= state.speed * dt * 0.34;
-    player.rotation.y = -state.steer * 0.16 - state.drift * 0.18;
+    player.rotation.y = state.stuntSpin - state.steer * 0.16 - state.drift * 0.18;
     player.rotation.z = -state.steer * 0.055 - state.drift * 0.09;
     player.userData.wheels.forEach(w => { w.rotation.x += state.speed * dt * 0.16; if (w.userData.front) w.rotation.y = -state.steer * 0.25; });
     state.distance += state.speed * dt / 3600 * 1.65;
