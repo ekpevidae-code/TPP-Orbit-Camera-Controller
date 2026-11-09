@@ -313,3 +313,97 @@ function update(dt: number) {
   ui.drift.style.color = driftActive ? "#ffbb62" : "#9ba9b6";
   ui.dNitro.textContent = Math.round(nitro * 100) + "%";
 }
+
+
+// --- Runtime boot: input wiring, resize handling and the render loop ---
+function setMode(next: DriveMode) {
+  mode = next;
+  document.body.dataset.driveMode = next;
+  $("mode-touch").classList.toggle("active", next === "TOUCHDRIVE");
+  $("mode-manual").classList.toggle("active", next === "MANUAL");
+  ui.driveState.textContent = next + " ACTIVE";
+  if (next === "TOUCHDRIVE") input.throttle = 0;
+}
+$("mode-touch").addEventListener("click", () => setMode("TOUCHDRIVE"));
+$("mode-manual").addEventListener("click", () => setMode("MANUAL"));
+
+function bindHold(id: string, down: () => void, up: () => void) {
+  const el = $(id);
+  const release = (event?: Event) => {
+    if (event) event.preventDefault();
+    up();
+    el.classList.remove("pressed");
+  };
+  el.addEventListener("pointerdown", (event) => {
+    event.preventDefault();
+    try { (el as HTMLButtonElement).setPointerCapture(event.pointerId); } catch {}
+    down();
+    el.classList.add("pressed");
+    audio.start();
+  });
+  el.addEventListener("pointerup", release);
+  el.addEventListener("pointercancel", release);
+  el.addEventListener("lostpointercapture", release);
+  el.addEventListener("contextmenu", event => event.preventDefault());
+}
+bindHold("steer-left", () => { input.steer = -1; }, () => { if (input.steer < 0) input.steer = 0; });
+bindHold("steer-right", () => { input.steer = 1; }, () => { if (input.steer > 0) input.steer = 0; });
+bindHold("drift-button", () => { input.drift = true; }, () => { input.drift = false; });
+bindHold("brake-button", () => { input.brake = true; }, () => { input.brake = false; });
+bindHold("gas-button", () => { input.throttle = 1; }, () => { input.throttle = 0; });
+$("nitro-button").addEventListener("pointerdown", event => {
+  event.preventDefault();
+  audio.start();
+  startNitro();
+  $("nitro-button").classList.add("pressed");
+});
+for (const name of ["pointerup", "pointercancel", "lostpointercapture"]) {
+  $("nitro-button").addEventListener(name, () => $("nitro-button").classList.remove("pressed"));
+}
+
+$("debug-toggle").addEventListener("click", () => { ui.debug.hidden = !ui.debug.hidden; });
+$("debug-close").addEventListener("click", () => { ui.debug.hidden = true; });
+
+function resize() {
+  const width = Math.max(1, window.innerWidth);
+  const height = Math.max(1, window.innerHeight);
+  camera.aspect = width / height;
+  camera.updateProjectionMatrix();
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+  renderer.setSize(width, height, false);
+}
+window.addEventListener("resize", resize, { passive: true });
+window.addEventListener("orientationchange", () => window.setTimeout(resize, 120), { passive: true });
+document.addEventListener("visibilitychange", () => { clock.getDelta(); });
+
+function animate() {
+  try {
+    const dt = Math.min(clock.getDelta(), 0.05);
+    update(dt);
+    renderer.render(scene, camera);
+    fpsFrames++;
+    fpsTime += dt;
+    if (fpsTime >= 0.5) {
+      fpsValue = Math.round(fpsFrames / fpsTime);
+      ui.fps.textContent = String(fpsValue);
+      if (fpsValue < 28) quality = "LOW";
+      else if (fpsValue < 48) quality = "MEDIUM";
+      else quality = "HIGH";
+      ui.quality.textContent = quality;
+      fpsFrames = 0;
+      fpsTime = 0;
+    }
+    if (!bootFinished) {
+      bootFinished = true;
+      ui.boot.classList.add("done");
+      window.setTimeout(() => { ui.boot.hidden = true; }, 550);
+    }
+  } catch (error) {
+    reportError(error);
+    renderer.setAnimationLoop(null);
+  }
+}
+let bootFinished = false;
+resize();
+setMode("TOUCHDRIVE");
+renderer.setAnimationLoop(animate);
