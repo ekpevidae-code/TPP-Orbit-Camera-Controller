@@ -8,11 +8,11 @@ export function updateChaseCamera(camera: THREE.PerspectiveCamera, car: any, dt:
   const nb = car.nitroBlend;
   const dist = T.camDist + sp * T.camDistSpeed + nb * T.camDistNitro;
   const height = T.camHeight - sp * 0.4;
-  const velAngle = Math.atan2(car.vel.x, car.vel.z);
+  const velAngle = Math.atan2(car.vel.x, -car.vel.z);
   let diff = velAngle - car.heading;
   diff = Math.atan2(Math.sin(diff), Math.cos(diff));
   const camAngle = car.heading + diff * 0.5;
-  target.set(car.pos.x - Math.sin(camAngle) * dist, height, car.pos.z - Math.cos(camAngle) * dist);
+  target.set(car.pos.x - Math.sin(camAngle) * dist, height, car.pos.z + Math.cos(camAngle) * dist);
   camera.position.lerp(target, 1 - Math.exp(-dt * 6));
   const shake = nb * 0.12 + sp * 0.02;
   camera.position.x += Math.sin(time * 90) * shake;
