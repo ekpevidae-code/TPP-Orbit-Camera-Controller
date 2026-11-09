@@ -25,7 +25,7 @@ export class ArcadeVehicleController {
 
   step(car, input, dt, { nitroMultiplier = 1, shockwave = false, airborne = false } = {}) {
     const delta = THREE.MathUtils.clamp(Number(dt) || 0, 0, 1 / 20);
-    const speed = Math.max(0, Number(car.speed) || 0);
+    let speed = Math.max(0, Number(car.speed) || 0);
     const gas = input.gas ? 1 : 0;
     const brake = input.brake ? 1 : 0;
     const steer = THREE.MathUtils.clamp(Number(input.steer) || 0, -1, 1);
@@ -33,7 +33,10 @@ export class ArcadeVehicleController {
     const nitroActive = boost > 1.01;
     // Give the driver an immediate speed kick when nitro is triggered, rather than
     // making the boost feel like ordinary engine acceleration.
-    if (nitroActive && !this.nitroWasActive) car.speed = Math.min(this.stats.topSpeed * boost, speed + (shockwave ? 22 : 13));
+    if (nitroActive && !this.nitroWasActive) {
+      speed = Math.min(this.stats.topSpeed * boost, speed + (shockwave ? 22 : 13));
+      car.speed = speed;
+    }
     this.nitroWasActive = nitroActive;
     const speedRatio = THREE.MathUtils.clamp(speed / this.stats.topSpeed, 0, 1.2);
     const engineForce = this.stats.acceleration * 1.42 * (0.9 + 0.5 * speedRatio);
