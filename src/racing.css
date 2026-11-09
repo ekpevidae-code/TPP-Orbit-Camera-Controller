@@ -78,3 +78,43 @@
   .gas{min-width:48px}
   .actions{gap:3px}
 }
+
+/* Velocity Run is designed for landscape play on phones and tablets. */
+@media (orientation: portrait) and (pointer: coarse) {
+  #game::after {
+    content: "ROTATE YOUR PHONE\A FOR THE FULL RACING EXPERIENCE";
+    white-space: pre;
+    position: absolute;
+    z-index: 20;
+    inset: 0;
+    display: grid;
+    place-content: center;
+    text-align: center;
+    padding: 28px;
+    background: radial-gradient(ellipse at center, #172b43 0%, #050a12 78%);
+    color: #f5f8ff;
+    font-size: clamp(16px, 5vw, 23px);
+    line-height: 1.65;
+    letter-spacing: 2px;
+    font-weight: 950;
+    font-style: italic;
+    text-shadow: 0 0 22px #35bfff66;
+  }
+  #game::before {
+    content: "↻";
+    position: absolute;
+    z-index: 21;
+    left: 50%;
+    top: 34%;
+    transform: translate(-50%, -50%);
+    color: #62d8ff;
+    font-size: 58px;
+    line-height: 1;
+    pointer-events: none;
+    animation: rotate-device 1.8s ease-in-out infinite;
+  }
+}
+@keyframes rotate-device {
+  0%, 100% { transform: translate(-50%, -50%) rotate(0deg); }
+  50% { transform: translate(-50%, -50%) rotate(90deg); }
+}
