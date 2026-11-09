@@ -20,27 +20,27 @@ export function updateChaseCamera(camera: THREE.PerspectiveCamera, car: CameraCa
   const boost = clamp01(car.nitroBlend);
 
   // Camera stays behind the car's nose; it does not swing after every steering tap.
-  const distance = T.camDist + speed * 1.35 + boost * 0.65;
-  const height = T.camHeight + speed * 0.12;
+  const distance = T.camDist + speed * 2.0 + boost * 0.8;
+  const height = T.camHeight + speed * 0.28 + boost * 0.12;
   const heading = car.heading;
   desiredPosition.set(
     car.pos.x - Math.sin(heading) * distance,
     height,
     car.pos.z + Math.cos(heading) * distance
   );
-  camera.position.lerp(desiredPosition, 1 - Math.exp(-dt * 4.2));
+  camera.position.lerp(desiredPosition, 1 - Math.exp(-dt * 2.8));
 
   // Look farther down the road as speed increases, keeping the car low in frame.
   desiredLook.set(
-    car.pos.x + Math.sin(heading) * (3.8 + speed * 2.2),
+    car.pos.x + Math.sin(heading) * (4.8 + speed * 3.0),
     0.92 + speed * 0.08,
-    car.pos.z - Math.cos(heading) * (5.5 + speed * 3.0)
+    car.pos.z - Math.cos(heading) * (7.0 + speed * 4.0)
   );
   if (smoothedLook.lengthSq() === 0) smoothedLook.copy(desiredLook);
-  smoothedLook.lerp(desiredLook, 1 - Math.exp(-dt * 5.0));
+  smoothedLook.lerp(desiredLook, 1 - Math.exp(-dt * 3.8));
   camera.lookAt(smoothedLook);
 
-  const desiredFov = T.fovBase + speed * 7 + boost * 12;
-  camera.fov += (desiredFov - camera.fov) * (1 - Math.exp(-dt * 2.4));
+  const desiredFov = T.fovBase + speed * 5 + boost * 10;
+  camera.fov += (desiredFov - camera.fov) * (1 - Math.exp(-dt * 1.8));
   camera.updateProjectionMatrix();
 }
