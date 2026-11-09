@@ -37,7 +37,7 @@ export class RaceHUD {
 
   bindControls({ setInput, startRace, nitro, stunt, pause }) {
     const controls = [
-      ['left', 'left'], ['right', 'right'], ['brake', 'brake'], ['gas', 'gas']
+      ['left', 'left'], ['right', 'right'], ['brake', 'brake'], ['handbrake', 'handbrake'], ['gas', 'gas']
     ];
     const active = new Map();
     const release = (id, key, element) => {
@@ -74,7 +74,7 @@ export class RaceHUD {
     const keyMap = {
       ArrowUp: ['gas', true], w: ['gas', true], ArrowDown: ['brake', true], s: ['brake', true],
       ArrowLeft: ['left', true], a: ['left', true], ArrowRight: ['right', true], d: ['right', true],
-      ' ': ['nitroOn', true], Shift: ['nitroOn', true], e: ['stunt', true], Escape: ['pause', true]
+      ' ': ['nitroOn', true], Shift: ['nitroOn', true], Control: ['handbrake', true], e: ['stunt', true], Escape: ['pause', true]
     };
     const down = event => {
       const action = keyMap[event.key] || keyMap[event.key.toLowerCase()];
@@ -82,7 +82,7 @@ export class RaceHUD {
       if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(event.key)) event.preventDefault();
       if (event.repeat && ['nitro', 'stunt', 'pause'].includes(action[0])) return;
       const key = action[0];
-      if (['gas', 'brake', 'left', 'right', 'nitroOn'].includes(key)) setInput(key, true);
+      if (['gas', 'brake', 'left', 'right', 'handbrake', 'nitroOn'].includes(key)) setInput(key, true);
       else if (key === 'nitro') nitro();
       else if (key === 'stunt') stunt();
       else if (key === 'pause') pause();
@@ -90,11 +90,11 @@ export class RaceHUD {
     };
     const up = event => {
       const action = keyMap[event.key] || keyMap[event.key.toLowerCase()];
-      if (action && ['gas', 'brake', 'left', 'right', 'nitroOn'].includes(action[0])) setInput(action[0], false);
+      if (action && ['gas', 'brake', 'left', 'right', 'handbrake', 'nitroOn'].includes(action[0])) setInput(action[0], false);
     };
     const blur = () => {
-      for (const key of ['gas', 'brake', 'left', 'right', 'nitroOn']) setInput(key, false);
-      for (const id of ['left', 'right', 'brake', 'gas']) this.root.querySelector('#' + id)?.classList.remove('pressed');
+      for (const key of ['gas', 'brake', 'left', 'right', 'handbrake', 'nitroOn']) setInput(key, false);
+      for (const id of ['left', 'right', 'brake', 'handbrake', 'gas']) this.root.querySelector('#' + id)?.classList.remove('pressed');
       active.clear();
     };
     window.addEventListener('keydown', down);
