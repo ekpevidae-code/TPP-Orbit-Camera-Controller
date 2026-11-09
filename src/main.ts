@@ -21,14 +21,9 @@ const runtimeErrors: string[] = [];
 function reportError(error: unknown) {
   const message = error instanceof Error ? error.stack || error.message : String(error);
   runtimeErrors.push(message.slice(0, 700));
-  ui.errors.textContent = runtimeErrors.slice(-4).join("
-
-");
+  ui.errors.textContent = runtimeErrors.slice(-4).join("\n\n");
   ui.error.hidden = false;
-  ui.error.textContent = "RACE SYSTEM WARNING
-" + runtimeErrors.slice(-2).join("
-
-");
+  ui.error.textContent = "RACE SYSTEM WARNING\n" + runtimeErrors.slice(-2).join("\n\n");
 }
 window.addEventListener("error", e => reportError(e.error || e.message));
 window.addEventListener("unhandledrejection", e => reportError(e.reason));
