@@ -66,6 +66,12 @@ export class Vehicle {
     vL *= Math.exp(-grip * dt);
     const authority = 1.9 * this.s.handling / (1 + this.speedKmh / 180) * (this.drifting ? 1.35 : 1);
     this.heading += this.steer * authority * clamp(vF / 10, -1, 1) * dt;
+    // When steering is released, progressively align the nose with the travel direction.
+    if (Math.abs(this.steer) < 0.08 && Math.abs(vF) > 3) {
+      const travelHeading = Math.atan2(this.vel.x, this.vel.z);
+      const align = Math.atan2(Math.sin(travelHeading - this.heading), Math.cos(travelHeading - this.heading));
+      this.heading += align * (1 - Math.exp(-dt * (this.drifting ? 1.1 : 3.8)));
+    }
 
     if (this.drifting && this.speedKmh > 60) {
       this.addNitro(T.nitroDriftCharge * dt);
