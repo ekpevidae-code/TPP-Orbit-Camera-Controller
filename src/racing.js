@@ -339,7 +339,7 @@ const gameStates=new GameStateManager(GAME_STATES.MENU);
 const vehiclePhysics=new ArcadeVehicleController(VEHICLES[0]);
 const nitroSystem=new NitroController(VEHICLES[0].nitro);
 const collisions=new AABBCollisionSystem();
-const state = { serverPlayerCarId: null, serverCarModelId: 'falcon-gt', speed: 0, steer: 0, drift: 0, nitro: 100, distance: 0, driftScore: 0, driftTime: 0, driftToastTime: 0, running: false, paused: false, finished: false, gas: false, brake: false, left: false, right: false, nitroOn: false, last: 0, shake: 0, airborne: 0, stuntSpin: 0, stuntSpinRate: 0, stuntRoll: 0, stuntDone: false, nitroTap: 0, nitroMode: 0, shockwave: 0, perfect: 0, rampIndex: 0, nearMissCooldown: 0, selectedCar: 0, upgrades: [0,0,0,0] };
+const state = { serverPlayerCarId: null, serverCarModelId: 'falcon-gt', speed: 0, steer: 0, drift: 0, nitro: 100, distance: 0, driftScore: 0, driftTime: 0, driftToastTime: 0, running: false, paused: false, finished: false, gas: false, brake: false, handbrake: false, left: false, right: false, nitroOn: false, last: 0, shake: 0, airborne: 0, stuntSpin: 0, stuntSpinRate: 0, stuntRoll: 0, stuntDone: false, nitroTap: 0, nitroMode: 0, shockwave: 0, perfect: 0, rampIndex: 0, nearMissCooldown: 0, selectedCar: 0, upgrades: [0,0,0,0] };
 const hud = new RaceHUD();
 const arcadeFX = createArcadeFX(scene,camera,renderer,player);
 let countdownRemaining=0, crashTime=0;
@@ -411,7 +411,7 @@ function startRace() {
 }
 function resetRace() {
   state.speed = 0; player.speed=0;nitroSystem.reset(VEHICLES[state.selectedCar||0].nitro);gameStates.transition(GAME_STATES.GARAGE); state.steer = 0; state.drift = 0; state.nitro = nitroSystem.value; state.distance = 0; state.driftScore = 0; state.driftTime = 0; state.driftToastTime = 0; state.airborne=0;state.stuntSpin=0;state.stuntRoll=0;state.stuntDone=false;state.nitroMode=0;state.shockwave=0;state.perfect=0;state.rampIndex=0;
-  state.running = false; state.paused = false; state.finished = false; state.gas=false;state.brake=false;state.left=false;state.right=false;state.nitroOn=false;nitroButton.classList.remove('pressed');
+  state.running = false; state.paused = false; state.finished = false; state.gas=false;state.brake=false;state.handbrake=false;state.left=false;state.right=false;state.nitroOn=false;nitroButton.classList.remove('pressed');
   player.position.set(trackCenter(4), 0, 4); player.rotation.set(0, 0, 0);
   vehiclePhysics.reset();
   rivals.forEach((r, i) => { const z=-28-i*20;r.car.position.set(trackCenter(z)+r.x,0,z);r.car.rotation.set(0,trackYaw(z),0); });
