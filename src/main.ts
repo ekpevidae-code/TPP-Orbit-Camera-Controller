@@ -192,7 +192,7 @@ const skidGroup = new THREE.Group(); scene.add(skidGroup);
 const skidMat = new THREE.MeshBasicMaterial({ color: 0x10151a, transparent: true, opacity: 0.62, depthWrite: false });
 let skidTimer = 0;
 let speed = 0, slipAngle = 0, nitro = 0.5, nitroTime = 0, driftTime = 0, driftPoints = 0, driftActive = false, perfectArmed = false;
-const vehicle = new Vehicle({ topSpeed: 300, accel: 22, handling: 1, nitroPower: 1 });
+const vehicle = new Vehicle({ topSpeed: 300, accel: 12, handling: 1, nitroPower: 1 });
 let nitroPending = false, previousBoost = false;
 let mode: DriveMode = "TOUCHDRIVE";
 let quality: QualityLevel = "MEDIUM";
@@ -285,7 +285,7 @@ function update(dt: number) {
     }
   } else {
     if (driftTime > 0.25) {
-      speed += Math.min(9, driftTime * 1.4);
+      // Drift exit speed is produced by the vehicle physics, not a HUD-only speed bonus.
       ui.driftScore.textContent = Math.round(driftPoints) + " DRIFT";
       ui.driftScore.classList.add("show");
       window.setTimeout(() => ui.driftScore.classList.remove("show"), 900);
@@ -306,12 +306,12 @@ function update(dt: number) {
   if (vehicle.pos.x < -roadLimit) { vehicle.pos.x = -roadLimit; vehicle.vel.x = Math.max(0, vehicle.vel.x) * 0.25; vehicle.heading *= 0.82; }
   car.position.x = vehicle.pos.x;
   car.position.y = Math.sin(elapsed * 18) * Math.min(speedNorm, 0.8) * 0.025 + (driftActive ? 0.035 : 0);
-  car.rotation.y = -vehicle.heading;
+  car.rotation.y = vehicle.heading;
   car.rotation.z = THREE.MathUtils.damp(car.rotation.z, -steer * speedNorm * (driftActive ? 0.16 : 0.045), 4.5, dt);
   const wheels = car.userData.wheels as { pivot: THREE.Group; spin: THREE.Group }[];
   wheels.forEach((w, i) => {
     w.spin.rotation.x -= speed * dt * 0.004;
-    if (i < 2) w.pivot.rotation.y = -steer * 0.42;
+    if (i < 2) w.pivot.rotation.y = -vehicle.steer * 0.24;
   });
 
   if (boost) shake = Math.max(shake, 0.08);
@@ -324,7 +324,7 @@ function update(dt: number) {
     nitroBlend: vehicle.nitroBlend,
     s: vehicle.s
   };
-  updateChaseCamera(camera, cameraCar, dt, elapsed);
+  updateChaseCamera(camera, cameraCar, dt);
 
   roadside.position.z = (elapsed * speed * 0.075) % 20;
   poles.position.z = (elapsed * speed * 0.075) % 42;
