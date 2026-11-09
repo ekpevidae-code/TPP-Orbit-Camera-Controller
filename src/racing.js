@@ -512,7 +512,7 @@ function animate(dtOverride) {
     const nitroState=nitroSystem.step(dt,state.nitroOn&&state.speed>12);
     state.nitro=nitroState.value;state.shockwave=nitroState.shockwave?nitroSystem.shockwaveTime:0;state.perfect=nitroState.perfect?nitroSystem.perfectTime:0;
     const nitroMultiplier=nitroState.shockwave?3.15:(state.nitroOn&&state.nitro>0?(state.perfect>0?2.75:2.35):1);
-    const physics=vehiclePhysics.step(player,{gas:state.gas,brake:state.brake,steer:state.steer},dt,{nitroMultiplier,shockwave:nitroState.shockwave,airborne:state.airborne>0});
+    const physics=vehiclePhysics.step(player,{gas:state.gas,brake:state.brake,handbrake:state.handbrake,steer:state.steer},dt,{nitroMultiplier,shockwave:nitroState.shockwave,airborne:state.airborne>0});
     const drifting=physics.drifting;state.speed=physics.speed;player.speed=state.speed;
     const maxSpeed=vehiclePhysics.stats.topSpeed*nitroMultiplier;
     state.drift=THREE.MathUtils.damp(state.drift,drifting?state.steer*0.45:0,drifting?1.1:5,dt);
@@ -529,13 +529,13 @@ function animate(dtOverride) {
       state.driftToastTime = Math.max(0, state.driftToastTime - dt);
       if (!state.driftToastTime) ui.driftToast.classList.remove('show');
     }
-    const trackOffset=player.position.x-trackCenter(player.position.z);const nextOffset=trackOffset+(physics.lateral*0.22*speedFactor+state.drift*3.4)*dt;player.position.x=trackCenter(player.position.z)+nextOffset;if(Math.abs(nextOffset)>7.7&&!nitroState.shockwave){player.position.x=trackCenter(player.position.z)+clamp(nextOffset,-7.2,7.2);player.speed*=0.72;state.speed=player.speed;state.steer*=-0.35;crashTime=Math.max(crashTime,0.22);arcadeFX.sparks();}
+    const trackOffset=player.position.x-trackCenter(player.position.z);const nextOffset=trackOffset+(physics.lateral*0.82+state.drift*2.1)*dt;player.position.x=trackCenter(player.position.z)+nextOffset;if(Math.abs(nextOffset)>7.7&&!nitroState.shockwave){player.position.x=trackCenter(player.position.z)+clamp(nextOffset,-7.2,7.2);player.speed*=0.72;state.speed=player.speed;state.steer*=-0.35;crashTime=Math.max(crashTime,0.22);arcadeFX.sparks();}
     player.position.z -= state.speed * dt * 0.46;player.position.x+=trackCenter(player.position.z)-trackCenter(player.position.z+state.speed*dt*0.46);
     if(state.airborne>0){state.airborne=Math.max(0,state.airborne-dt);state.stuntSpin+=state.stuntSpinRate*dt;player.position.y=0.8+Math.sin((1.1-state.airborne)/1.1*Math.PI)*2.5;state.stuntRoll+=state.steer*dt*4.2;if(state.airborne===0){player.position.y=0;if(state.stuntDone){nitroSystem.add(28);state.nitro=nitroSystem.value;state.driftScore+=500;ui.nitroLabel.textContent='LANDING +NITRO';}state.stuntDone=false;state.stuntSpin=0;state.stuntSpinRate=0;}}
     const stuntAt=[0.42,1.18,2.05];if(state.rampIndex<stuntAt.length&&state.distance>=stuntAt[state.rampIndex]){state.airborne=1.1;state.stuntDone=false;state.stuntRoll=0;state.stuntSpin=0;state.stuntSpinRate=0;state.rampIndex++;arcadeFX.sparks();}
-    player.rotation.y = state.stuntSpin + trackYaw(player.position.z) - state.steer * 0.16 - state.drift * 0.18;
+    player.rotation.y = state.stuntSpin + trackYaw(player.position.z) + physics.yaw - state.drift * 0.12;
     player.rotation.z = (state.airborne>0?state.stuntRoll:0) - state.steer * 0.055 - state.drift * 0.09;
-    player.userData.wheels.forEach(w => { w.rotation.x += state.speed * dt * 0.16; if (w.userData.front) w.rotation.y = -state.steer * 0.25; });
+    player.userData.wheels.forEach(w => { w.rotation.x += state.speed * dt * 0.16; if (w.userData.front) w.rotation.y = -physics.steeringAngle * 0.8; });
     state.distance += state.speed * dt / 3600 * 1.65;
     aiControllers.forEach(ai=>{ai.car.position.x-=trackCenter(ai.car.position.z);ai.step(dt,state.speed,player.position.x-trackCenter(player.position.z));ai.car.position.x+=trackCenter(ai.car.position.z);ai.car.rotation.y=trackYaw(ai.car.position.z);});
     state.nearMissCooldown=Math.max(0,state.nearMissCooldown-dt);
