@@ -31,8 +31,9 @@ export class Vehicle {
   addNitro(amount: number) { this.nitro = clamp(this.nitro + amount, 0, 1); }
 
   update(dt: number, input: VehicleInput) {
-    const fx = Math.sin(this.heading), fz = Math.cos(this.heading);
-    const rx = Math.cos(this.heading), rz = -Math.sin(this.heading);
+    // Three.js car forward is local -Z. Keep physics and rendered nose in the same coordinate frame.
+    const fx = Math.sin(this.heading), fz = -Math.cos(this.heading);
+    const rx = Math.cos(this.heading), rz = Math.sin(this.heading);
     let vF = this.vel.x * fx + this.vel.z * fz;
     let vL = this.vel.x * rx + this.vel.z * rz;
     this.speedKmh = Math.max(0, vF / KMH);
@@ -67,7 +68,8 @@ export class Vehicle {
     const handbrake = !!input.handbrake && this.speedKmh > 55;
     this.drifting = handbrake;
     const yawAtSpeed = 0.58 - speedRatio * 0.30;
-    const yawRate = this.steer * yawAtSpeed * this.s.handling * (handbrake ? 1.16 : 1);
+    // Positive steering input means right; Three.js yaw must turn the -Z nose toward +X.
+    const yawRate = -this.steer * yawAtSpeed * this.s.handling * (handbrake ? 1.12 : 1);
     this.heading += yawRate * dt;
 
     if (handbrake) {
@@ -84,14 +86,15 @@ export class Vehicle {
 
     // Let the chassis gently settle toward its direction of travel after releasing steering.
     if (Math.abs(this.steer) < 0.035 && Math.abs(vF) > 2 && !handbrake) {
-      const travelHeading = Math.atan2(this.vel.x, this.vel.z);
+      const travelHeading = Math.atan2(this.vel.x, -this.vel.z);
       const delta = Math.atan2(Math.sin(travelHeading - this.heading), Math.cos(travelHeading - this.heading));
       this.heading += delta * (1 - Math.exp(-dt * 2.2));
     }
 
-    this.slipAngle = Math.atan2(Math.abs(vL), Math.max(1, Math.abs(vF)));
-    const nfx = Math.sin(this.heading), nfz = Math.cos(this.heading);
-    const nrx = Math.cos(this.heading), nrz = -Math.sin(this.heading);
+    // Signed slip lets the front axle countersteer against the rear sliding outward.
+    this.slipAngle = Math.atan2(vL, Math.max(1, Math.abs(vF)));
+    const nfx = Math.sin(this.heading), nfz = -Math.cos(this.heading);
+    const nrx = Math.cos(this.heading), nrz = Math.sin(this.heading);
     this.vel.x = nfx * vF + nrx * vL;
     this.vel.z = nfz * vF + nrz * vL;
     this.pos.x += this.vel.x * dt;
