@@ -202,8 +202,8 @@ const clock = new THREE.Clock();
 let fpsFrames = 0, fpsTime = 0, fpsValue = 0;
 let shake = 0;
 const audio = (() => {
-  let ctx: AudioContext | null = null, osc: OscillatorNode | null = null, osc2: OscillatorNode | null = null;
-  let gain: GainNode | null = null, filter: BiquadFilterNode | null = null;
+  let ctx: AudioContext | null = null, osc: OscillatorNode | null = null, osc2: OscillatorNode | null = null, tireOsc: OscillatorNode | null = null;
+  let gain: GainNode | null = null, filter: BiquadFilterNode | null = null, tireGain: GainNode | null = null;
   function start() {
     if (ctx) { if (ctx.state === "suspended") void ctx.resume(); return; }
     ctx = new AudioContext();
@@ -213,7 +213,7 @@ const audio = (() => {
     osc2 = ctx.createOscillator(); osc2.type = "triangle"; osc2.frequency.value = 24;
     const subGain = ctx.createGain(); subGain.gain.value = 0.28;
     osc.connect(filter); osc2.connect(subGain); subGain.connect(filter);
-    filter.connect(gain); gain.connect(ctx.destination); osc.start(); osc2.start();
+    filter.connect(gain); gain.connect(ctx.destination);\n    tireOsc = ctx.createOscillator(); tireOsc.type = "sawtooth"; tireOsc.frequency.value = 145;\n    tireGain = ctx.createGain(); tireGain.gain.value = 0.0001;\n    const tireFilter = ctx.createBiquadFilter(); tireFilter.type = "bandpass"; tireFilter.frequency.value = 950; tireFilter.Q.value = 0.8;\n    tireOsc.connect(tireFilter); tireFilter.connect(tireGain); tireGain.connect(ctx.destination);\n    osc.start(); osc2.start(); tireOsc.start();
   }
   return {
     start,
@@ -223,7 +223,7 @@ const audio = (() => {
       osc.frequency.setTargetAtTime(rpm,ctx.currentTime,0.1);
       osc2.frequency.setTargetAtTime(rpm*0.5,ctx.currentTime,0.1);
       filter.frequency.setTargetAtTime(240 + s*5 + (boost?650:0),ctx.currentTime,0.14);
-      gain.gain.setTargetAtTime(0.006 + Math.min(s/320,1)*0.018,ctx.currentTime,0.16);
+      gain.gain.setTargetAtTime(0.004 + Math.min(s/320,1)*0.014,ctx.currentTime,0.16);\n      tireOsc.frequency.setTargetAtTime(125 + Math.min(s,220) * 1.1, ctx.currentTime, 0.08);\n      tireGain.gain.setTargetAtTime(drifting ? 0.018 : 0.0001, ctx.currentTime, 0.12);
     },
     burst() {
       if (!ctx) return;
@@ -336,7 +336,7 @@ function update(dt: number) {
     (p.mesh.material as THREE.MeshBasicMaterial).opacity = Math.max(0, p.life / p.max) * (p.max > 0.5 ? 0.28 : 0.95);
     if (p.life <= 0) { particleGroup.remove(p.mesh); p.mesh.geometry.dispose(); particles.splice(i, 1); }
   });
-  audio.update(speed, boost);
+  audio.update(speed, boost, driftActive);
   ui.speed.textContent = Math.round(speed).toString().padStart(3, "0");
   ui.nitroFill.style.width = (nitro * 100) + "%";
   ui.nitroPercent.textContent = Math.round(nitro * 100).toString().padStart(3, "0") + "%";
