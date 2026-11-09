@@ -2,3 +2,5 @@
 
 /* Portrait is playable too: never cover the game with an orientation gate. */
 @media(orientation:portrait){.top-hud{padding-top:calc(env(safe-area-inset-top) + 8px)}.brand b{font-size:13px}.race-readout strong{font-size:28px}.control-mode{top:58px}.nitro-wrap{top:104px;width:min(68vw,300px)}.touch-controls{bottom:calc(env(safe-area-inset-bottom) + 12px);padding:0 8px;gap:6px}.steer-pad,.action-pad{gap:5px}.steer-button{width:48px;height:48px;font-size:34px}.action-button{min-width:42px;height:48px;padding:6px;font-size:8px}.nitro-button{width:60px;height:60px;min-width:60px}.bottom-hud{font-size:6px;bottom:3px}}
+
+body[data-drive-mode="MANUAL"] .brake-button,body[data-drive-mode="MANUAL"] .gas-button{display:block}
