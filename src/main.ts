@@ -101,7 +101,7 @@ for (let z = 18; z > -800; z -= 42) for (const side of [-1, 1]) {
 
 function makeCar() {
   const car = new THREE.Group();
-  const paint = new THREE.MeshPhysicalMaterial({ color: 0x0879a7, metalness: 0.72, roughness: 0.24, clearcoat: 1, clearcoatRoughness: 0.1 });
+  const paint = new THREE.MeshPhysicalMaterial({ color: 0xff7a18, metalness: 0.72, roughness: 0.24, clearcoat: 1, clearcoatRoughness: 0.1 });
   const dark = new THREE.MeshStandardMaterial({ color: 0x10151b, metalness: 0.58, roughness: 0.3 });
   const glass = new THREE.MeshPhysicalMaterial({ color: 0x102838, metalness: 0.28, roughness: 0.12, clearcoat: 1, transparent: true, opacity: 0.96 });
   const rubber = new THREE.MeshStandardMaterial({ color: 0x080a0d, roughness: 0.9 });
@@ -109,11 +109,11 @@ function makeCar() {
   const led = new THREE.MeshBasicMaterial({ color: 0xb9f2ff });
   const red = new THREE.MeshBasicMaterial({ color: 0xff263e });
   const body = new THREE.Mesh(new THREE.SphereGeometry(1, 32, 18), paint);
-  body.scale.set(1.08, 0.29, 2.22); body.position.y = 0.72; body.castShadow = true; car.add(body);
+  body.scale.set(1.12, 0.27, 2.28); body.position.y = 0.68; body.castShadow = true; car.add(body);
   const hood = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 14), paint);
-  hood.scale.set(0.98, 0.22, 0.92); hood.position.set(0, 0.79, -1.45); hood.castShadow = true; car.add(hood);
+  hood.scale.set(1.00, 0.19, 1.02); hood.position.set(0, 0.73, -1.48); hood.castShadow = true; car.add(hood);
   const rearDeck = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 14), paint);
-  rearDeck.scale.set(0.98, 0.2, 0.64); rearDeck.position.set(0, 0.79, 1.52); car.add(rearDeck);
+  rearDeck.scale.set(1.00, 0.18, 0.66); rearDeck.position.set(0, 0.73, 1.52); car.add(rearDeck);
   // Sloped windscreen and roof give the silhouette a sports-coupe profile.
   const cabinGeo = new THREE.BufferGeometry();
   const v = new Float32Array([
