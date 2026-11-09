@@ -156,6 +156,67 @@ trunks.instanceMatrix.needsUpdate = true;
 crowns.instanceMatrix.needsUpdate = true;
 scene.add(trunks, crowns);
 
+// Urban grand-prix skyline: instanced architecture keeps the extra detail inexpensive on phones.
+const towerMaterials = [
+  new THREE.MeshStandardMaterial({color:0x394958,roughness:0.82,metalness:0.18}),
+  new THREE.MeshStandardMaterial({color:0x586575,roughness:0.78,metalness:0.2}),
+  new THREE.MeshStandardMaterial({color:0x283746,roughness:0.86,metalness:0.12})
+];
+const towerCount = 74;
+const towers = new THREE.InstancedMesh(new THREE.BoxGeometry(1,1,1), towerMaterials[0], towerCount);
+const towerWindows = new THREE.InstancedMesh(new THREE.BoxGeometry(1,1,1), new THREE.MeshBasicMaterial({color:0x8ac9e8}), towerCount * 5);
+const towerDummy = new THREE.Object3D();
+let windowIndex = 0;
+for (let i=0;i<towerCount;i++) {
+  const side = i%2===0 ? -1 : 1;
+  const x = side*(31 + (i%5)*5.2);
+  const z = -65 - Math.floor(i/2)*78;
+  const width = 8 + (i%3)*2.5;
+  const depth = 10 + (i%4)*2;
+  const height = 18 + ((i*17)%7)*7;
+  towerDummy.position.set(x,height/2,z);
+  towerDummy.scale.set(width,height,depth);
+  towerDummy.rotation.y = side*0.06;
+  towerDummy.updateMatrix();
+  towers.setMatrixAt(i,towerDummy.matrix);
+  // Sparse vertical window ribbons on the road-facing facade.
+  for(let row=0;row<5;row++){
+    towerDummy.position.set(x-side*(width/2+0.025),height*(0.18+row*0.145),z);
+    towerDummy.scale.set(0.045,Math.max(0.8,height*0.055),depth*0.68);
+    towerDummy.rotation.set(0,0,0);
+    towerDummy.updateMatrix();
+    towerWindows.setMatrixAt(windowIndex++,towerDummy.matrix);
+  }
+}
+towers.instanceMatrix.needsUpdate=true;
+towerWindows.count=windowIndex;
+towerWindows.instanceMatrix.needsUpdate=true;
+scene.add(towers,towerWindows);
+
+// Track gantries add scale and a clear racing-line landmark at speed.
+const gantryMat = new THREE.MeshStandardMaterial({color:0x172536,metalness:0.72,roughness:0.28});
+const gantryGlow = new THREE.MeshStandardMaterial({color:0x45cfff,emissive:0x0879b5,emissiveIntensity:2.1,metalness:0.25,roughness:0.24});
+for(const z of [-180,-760,-1360,-2050]){
+  const gate = new THREE.Group();
+  const beam = new THREE.Mesh(new THREE.BoxGeometry(roadWidth+2.6,0.48,0.58),gantryMat);
+  beam.position.y=7.1; gate.add(beam);
+  for(const x of [-(roadWidth/2+0.85),roadWidth/2+0.85]){
+    const post = new THREE.Mesh(new THREE.BoxGeometry(0.42,7.2,0.48),gantryMat);
+    post.position.set(x,3.55,0); gate.add(post);
+  }
+  const strip = new THREE.Mesh(new THREE.BoxGeometry(roadWidth+1.9,0.075,0.68),gantryGlow);
+  strip.position.set(0,6.78,0); gate.add(strip);
+  const sign = new THREE.Mesh(new THREE.BoxGeometry(4.8,0.82,0.12),new THREE.MeshStandardMaterial({color:0x0a1522,emissive:0x071a2a,emissiveIntensity:0.7}));
+  sign.position.set(0,6.12,0); gate.add(sign);
+  for(let lamp=0;lamp<7;lamp++){
+    const light = new THREE.Mesh(new THREE.BoxGeometry(0.42,0.12,0.12),new THREE.MeshBasicMaterial({color:lamp%2?0xffbd5b:0x55dfff}));
+    light.position.set(-4.5+lamp*1.5,7.43,0);gate.add(light);
+  }
+  gate.position.z=z;
+  scene.add(gate);
+}
+
+
 // Detailed low-poly sports car with body, glass, wheels, lamps and rear wing.
 function makeCar(color = 0xe64b25) {
   const root = new THREE.Group();
