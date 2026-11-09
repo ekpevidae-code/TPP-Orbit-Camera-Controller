@@ -3,6 +3,7 @@ import { createArcadeFX } from './arcade-systems.js';
 import { GAME_STATES, VEHICLES, GameStateManager, NitroController, AABBCollisionSystem, WaypointRacerAI, GameLoop } from './game-core.js';
 import { RaceHUD } from './hud.js';
 import { ArcadeVehicleController } from './game.js';
+import { CheckpointSystem, resolveTrackBoundary } from './track/checkpoints.js';
 import { session, registerAccount, loginAccount, logoutAccount, getGarage, purchaseCar, upgradeCar, selectCar } from './api.js';
 
 const canvas = document.querySelector('#race-canvas');
@@ -115,6 +116,20 @@ for(const side of [-1,1])for(let i=0;i<railCount;i++){
 railWhite.count=whiteIndex;railRed.count=redIndex;
 railWhite.instanceMatrix.needsUpdate=true;railRed.instanceMatrix.needsUpdate=true;
 road.add(railWhite,railRed);
+// Three sequential checkpoint gates make the sprint route readable at speed.
+const checkpointDistances=[-750,-1500,-2250];
+const checkpointGates=[];
+checkpointDistances.forEach((z,index)=>{
+  const gate=new THREE.Group();
+  const frameMat=new THREE.MeshStandardMaterial({color:0x162b3c,metalness:0.65,roughness:0.3,emissive:0x071c2b,emissiveIntensity:0.5});
+  const glowMat=new THREE.MeshStandardMaterial({color:0x52ddff,emissive:0x0b8bbd,emissiveIntensity:2.2});
+  const beam=new THREE.Mesh(new THREE.BoxGeometry(roadWidth+1.6,0.34,0.42),frameMat);beam.position.y=6.4;gate.add(beam);
+  for(const side of [-1,1]){const post=new THREE.Mesh(new THREE.BoxGeometry(0.32,6.4,0.42),frameMat);post.position.set(side*(roadWidth/2+0.45),3.2,0);gate.add(post);}
+  const strip=new THREE.Mesh(new THREE.BoxGeometry(roadWidth+1.25,0.1,0.52),glowMat);strip.position.y=6.12;gate.add(strip);
+  const markerBox=new THREE.Mesh(new THREE.BoxGeometry(3.6,0.58,0.1),new THREE.MeshBasicMaterial({color:0x0b1724}));markerBox.position.set(0,5.55,0);gate.add(markerBox);
+  for(let lamp=0;lamp<3;lamp++){const lampMesh=new THREE.Mesh(new THREE.BoxGeometry(0.38,0.1,0.12),new THREE.MeshBasicMaterial({color:0xffbd62}));lampMesh.position.set(-0.72+lamp*0.72,6.7,0);gate.add(lampMesh);}
+  gate.position.copy(trackPoint(z,0,0));gate.rotation.y=trackYaw(z);scene.add(gate);checkpointGates.push(gate);
+});
 const startLine=new THREE.Mesh(new THREE.BoxGeometry(roadWidth,0.035,1.5),mats.line);
 startLine.position.copy(trackPoint(6,0,0.04));startLine.rotation.y=trackYaw(6);road.add(startLine);
 
@@ -339,7 +354,8 @@ const gameStates=new GameStateManager(GAME_STATES.MENU);
 const vehiclePhysics=new ArcadeVehicleController(VEHICLES[0]);
 const nitroSystem=new NitroController(VEHICLES[0].nitro);
 const collisions=new AABBCollisionSystem();
-const state = { serverPlayerCarId: null, serverCarModelId: 'falcon-gt', speed: 0, steer: 0, drift: 0, nitro: 100, distance: 0, driftScore: 0, driftTime: 0, driftToastTime: 0, running: false, paused: false, finished: false, gas: false, brake: false, handbrake: false, left: false, right: false, nitroOn: false, last: 0, shake: 0, airborne: 0, stuntSpin: 0, stuntSpinRate: 0, stuntRoll: 0, stuntDone: false, nitroTap: 0, nitroMode: 0, shockwave: 0, perfect: 0, rampIndex: 0, nearMissCooldown: 0, selectedCar: 0, upgrades: [0,0,0,0] };
+const checkpointSystem=new CheckpointSystem(checkpointDistances.map((z,i)=>({id:i+1,z,label:'CHECKPOINT '+(i+1)})));
+const state = { serverPlayerCarId: null, serverCarModelId: 'falcon-gt', speed: 0, steer: 0, drift: 0, nitro: 100, distance: 0, driftScore: 0, driftTime: 0, driftToastTime: 0, running: false, paused: false, finished: false, gas: false, brake: false, handbrake: false, left: false, right: false, nitroOn: false, last: 0, shake: 0, airborne: 0, stuntSpin: 0, stuntSpinRate: 0, stuntRoll: 0, stuntDone: false, nitroTap: 0, nitroMode: 0, shockwave: 0, perfect: 0, rampIndex: 0, checkpointIndex: 0, previousTrackZ: 4, nearMissCooldown: 0, selectedCar: 0, upgrades: [0,0,0,0] };
 const hud = new RaceHUD();
 const arcadeFX = createArcadeFX(scene,camera,renderer,player);
 let countdownRemaining=0, crashTime=0;
@@ -410,7 +426,7 @@ function startRace() {
   state.running=true;state.paused=false;ui.pause.classList.add('hidden');countdownRemaining=2.8;gameStates.transition(GAME_STATES.COUNTDOWN);ui.message.style.opacity='1';ui.message.querySelector('strong').textContent='3';ui.message.querySelector('span').textContent='GET READY';
 }
 function resetRace() {
-  state.speed = 0; player.speed=0;nitroSystem.reset(VEHICLES[state.selectedCar||0].nitro);gameStates.transition(GAME_STATES.GARAGE); state.steer = 0; state.drift = 0; state.nitro = nitroSystem.value; state.distance = 0; state.driftScore = 0; state.driftTime = 0; state.driftToastTime = 0; state.airborne=0;state.stuntSpin=0;state.stuntRoll=0;state.stuntDone=false;state.nitroMode=0;state.shockwave=0;state.perfect=0;state.rampIndex=0;
+  state.speed = 0; player.speed=0;nitroSystem.reset(VEHICLES[state.selectedCar||0].nitro);gameStates.transition(GAME_STATES.GARAGE); state.steer = 0; state.drift = 0; state.nitro = nitroSystem.value; state.distance = 0; state.driftScore = 0; state.driftTime = 0; state.driftToastTime = 0; state.airborne=0;state.stuntSpin=0;state.stuntRoll=0;state.stuntDone=false;state.nitroMode=0;state.shockwave=0;state.perfect=0;state.rampIndex=0;state.checkpointIndex=0;state.previousTrackZ=4;checkpointSystem.reset();
   state.running = false; state.paused = false; state.finished = false; state.gas=false;state.brake=false;state.handbrake=false;state.left=false;state.right=false;state.nitroOn=false;nitroButton.classList.remove('pressed');
   player.position.set(trackCenter(4), 0, 4); player.rotation.set(0, 0, 0);
   vehiclePhysics.reset();
@@ -529,8 +545,10 @@ function animate(dtOverride) {
       state.driftToastTime = Math.max(0, state.driftToastTime - dt);
       if (!state.driftToastTime) ui.driftToast.classList.remove('show');
     }
-    const trackOffset=player.position.x-trackCenter(player.position.z);const nextOffset=trackOffset+(physics.lateral*0.82+state.drift*2.1)*dt;player.position.x=trackCenter(player.position.z)+nextOffset;if(Math.abs(nextOffset)>7.7&&!nitroState.shockwave){player.position.x=trackCenter(player.position.z)+clamp(nextOffset,-7.2,7.2);player.speed*=0.72;state.speed=player.speed;state.steer*=-0.35;crashTime=Math.max(crashTime,0.22);arcadeFX.sparks();}
-    player.position.z -= state.speed * dt * 0.46;player.position.x+=trackCenter(player.position.z)-trackCenter(player.position.z+state.speed*dt*0.46);
+    const trackOffset=player.position.x-trackCenter(player.position.z);const nextOffset=trackOffset+(physics.lateral*0.82+state.drift*2.1)*dt;const boundary=resolveTrackBoundary(nextOffset,roadWidth/2,0.8);player.position.x=trackCenter(player.position.z)+boundary.offset;if(boundary.offRoad&&!nitroState.shockwave){player.speed*=1-0.28*boundary.severity;state.speed=player.speed;state.steer*=-0.22;crashTime=Math.max(crashTime,0.18);if(boundary.severity>0.65)arcadeFX.sparks();}
+    state.previousTrackZ=player.position.z;player.position.z -= state.speed * dt * 0.46;player.position.x+=trackCenter(player.position.z)-trackCenter(state.previousTrackZ);
+    const checkpointEvent=checkpointSystem.update(player.position.z);
+    if(checkpointEvent){state.checkpointIndex=checkpointEvent.index;ui.state.textContent=checkpointEvent.complete?'FINAL SECTOR':'CHECKPOINT '+checkpointEvent.index+' / '+checkpointEvent.total;ui.nitroLabel.textContent='CHECKPOINT +';nitroSystem.add(6);state.nitro=nitroSystem.value;arcadeFX.sparks();}
     if(state.airborne>0){state.airborne=Math.max(0,state.airborne-dt);state.stuntSpin+=state.stuntSpinRate*dt;player.position.y=0.8+Math.sin((1.1-state.airborne)/1.1*Math.PI)*2.5;state.stuntRoll+=state.steer*dt*4.2;if(state.airborne===0){player.position.y=0;if(state.stuntDone){nitroSystem.add(28);state.nitro=nitroSystem.value;state.driftScore+=500;ui.nitroLabel.textContent='LANDING +NITRO';}state.stuntDone=false;state.stuntSpin=0;state.stuntSpinRate=0;}}
     const stuntAt=[0.42,1.18,2.05];if(state.rampIndex<stuntAt.length&&state.distance>=stuntAt[state.rampIndex]){state.airborne=1.1;state.stuntDone=false;state.stuntRoll=0;state.stuntSpin=0;state.stuntSpinRate=0;state.rampIndex++;arcadeFX.sparks();}
     player.rotation.y = state.stuntSpin + trackYaw(player.position.z) + physics.yaw - state.drift * 0.12;
@@ -550,7 +568,7 @@ function animate(dtOverride) {
     camera.position.x += (Math.random() - 0.5) * state.shake;
     const placesBehind = rivals.filter(r => r.car.position.z < player.position.z).length;
     const place = Math.min(6, placesBehind + 1);
-    hud.render({speed:state.speed,distance:state.distance,totalDistance,position:place,nitro:state.nitro,nitroCapacity:nitroSystem.capacity,driftScore:state.driftScore,drifting:state.driftTime>0,state:gameStates.current});
+    hud.render({speed:state.speed,distance:state.distance,totalDistance,position:place,nitro:state.nitro,nitroCapacity:nitroSystem.capacity,driftScore:state.driftScore,drifting:state.driftTime>0,state:gameStates.current,checkpoint:state.checkpointIndex});
     if (state.distance >= totalDistance) {
       state.finished=true;state.running=false;state.speed=0;gameStates.transition(GAME_STATES.GAME_OVER);
       ui.finishTitle.textContent = 'FINISH!';
