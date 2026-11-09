@@ -229,6 +229,38 @@ const totalDistance = 3.0;
 const clamp = THREE.MathUtils.clamp;
 const clock = new THREE.Clock();
 
+let mobileSlowFrames = 0;
+let mobileFastFrames = 0;
+let mobilePixelRatio = Math.min(window.devicePixelRatio || 1, mobileDevice ? 0.85 : 1.35);
+
+function adaptMobileQuality(frameDt) {
+  if (!mobileDevice || !Number.isFinite(frameDt) || frameDt <= 0) return;
+  if (frameDt > 0.029) {
+    mobileSlowFrames++;
+    mobileFastFrames = 0;
+  } else if (frameDt < 0.019) {
+    mobileFastFrames++;
+    mobileSlowFrames = 0;
+  } else {
+    mobileSlowFrames = Math.max(0, mobileSlowFrames - 1);
+    mobileFastFrames = 0;
+  }
+
+  let nextRatio = mobilePixelRatio;
+  if (mobileSlowFrames >= 36) {
+    nextRatio = Math.max(0.6, mobilePixelRatio - 0.08);
+    mobileSlowFrames = 0;
+  } else if (mobileFastFrames >= 360) {
+    nextRatio = Math.min(Math.min(window.devicePixelRatio || 1, 0.85), mobilePixelRatio + 0.04);
+    mobileFastFrames = 0;
+  }
+  if (Math.abs(nextRatio - mobilePixelRatio) >= 0.03) {
+    mobilePixelRatio = nextRatio;
+    renderer.setPixelRatio(mobilePixelRatio);
+    renderer.setSize(Math.max(1, canvas.clientWidth || window.innerWidth), Math.max(1, canvas.clientHeight || window.innerHeight), false);
+  }
+}
+
 function resize() {
   arcadeFX.resize();
   const w = Math.max(1, canvas.clientWidth || window.innerWidth);
@@ -415,7 +447,7 @@ camera.position.set(0, 5.5, 14);
 camera.lookAt(0, 0.8, -8);
 const gameLoop=new GameLoop(
   dt=>animate(dt),
-  frameDt=>arcadeFX.render(frameDt,state.speed,Math.abs(state.drift)>0.08,state.nitroOn,state.shockwave>0)
+  frameDt=>{adaptMobileQuality(frameDt);arcadeFX.render(frameDt,state.speed,Math.abs(state.drift)>0.08,state.nitroOn,state.shockwave>0);}
 );
 gameLoop.start();
 window.addEventListener('pagehide',()=>{gameLoop.stop();unsubscribeState();hud.destroy();gameResizeObserver.disconnect();},{once:true});
