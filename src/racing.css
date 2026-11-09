@@ -31,54 +31,6 @@
 
 .account-form{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:12px 0 14px;padding:10px;border:1px solid #ffffff20;border-radius:9px;background:#050d19aa}.account-form-head{grid-column:1/-1;display:flex;justify-content:space-between;gap:8px;align-items:center;font-size:8px;letter-spacing:1px}.account-form-head strong{color:#ffca79}.account-form-head span{color:#aebbd0;letter-spacing:0;font-weight:500}.account-form input{width:100%;min-width:0;height:34px;padding:0 9px;border:1px solid #ffffff25;border-radius:6px;background:#ffffff0d;color:#f5f8ff;font:inherit;font-size:10px;outline:none}.account-form input:first-of-type{grid-column:1/-1}.account-form input:focus{border-color:#ffbd65}.account-actions{grid-column:1/-1;display:flex;gap:6px}.account-actions button{flex:1;min-height:32px;border-radius:6px;background:#e99a38;color:#1b1207;font-size:8px;font-weight:900}.account-actions button+button{background:#ffffff16;color:#f1f5fc;border:1px solid #ffffff26}.account-form>small{grid-column:1/-1;color:#b7c5d8;font-size:8px;line-height:1.4}
 
-/* Portrait phones are first-class layouts: no orientation gate, cropped controls, or forced rotation. */
-@media (max-width: 600px) and (orientation: portrait) {
-  html,body{width:100%;height:100%;height:100dvh;overflow:hidden}
-  #game{width:100vw;height:100%;height:100dvh;min-height:0;overflow:hidden}
-  #race-canvas{width:100%;height:100%;touch-action:none}
-  .topbar{padding:calc(env(safe-area-inset-top) + 5px) 9px 4px;gap:6px}
-  .brand{gap:5px;font-size:9px;letter-spacing:1.2px}
-  .brand-mark{width:23px;height:23px;font-size:12px}
-  .race-status{font-size:7px;letter-spacing:.8px}
-  .icon-btn{width:32px;height:32px}
-  .hud{top:43px;left:7px;right:7px;grid-template-columns:1fr 1fr .78fr;gap:5px}
-  .speed-box,.race-box,.position-box{min-width:0;padding:6px 7px;border-radius:7px}
-  .eyebrow{font-size:6px;letter-spacing:1px}
-  .speed-line{gap:3px}
-  .speed-line strong{font-size:clamp(21px,6vw,29px);letter-spacing:-1px}
-  .speed-line span{font-size:6px}
-  .race-box>strong{font-size:15px}
-  .race-box>strong small{font-size:7px}
-  .position-box strong{font-size:19px}
-  .position-box strong span{font-size:8px}
-  .progress-track{height:3px;margin-top:4px}
-  .bottom-hud{left:0;right:0;bottom:calc(env(safe-area-inset-bottom) + 9px);padding:0 7px;gap:5px;align-items:end}
-  .steering{gap:5px}
-  .actions{gap:4px}
-  .control{height:47px;min-width:43px;padding:0 6px;border-radius:9px;font-size:8px;letter-spacing:.4px}
-  .steer{width:46px;min-width:46px;font-size:27px}
-  .brake,.nitro{padding:0 6px;font-size:7px}
-  .nitro span{font-size:12px}
-  .gas{min-width:54px;padding:0 7px;font-size:8px}
-  .gas span{font-size:13px;margin-left:2px}
-  .nitro-meter{left:8px;bottom:calc(env(safe-area-inset-bottom) + 66px);transform:none;width:min(43vw,170px);padding:5px 7px}
-  .nitro-meter-head{font-size:6px}
-  .nitro-track{height:4px;margin:3px 0}
-  .stunt-control{right:8px;bottom:calc(env(safe-area-inset-bottom) + 67px);height:32px;min-width:66px;font-size:7px}
-  .footer-note{left:8px;right:8px;bottom:calc(env(safe-area-inset-bottom) + 1px);font-size:6px}
-  .garage-layer{padding:8px;overflow-y:auto;align-items:center}
-  .garage-card{width:min(100%,520px);max-height:calc(100dvh - 16px);overflow-y:auto;padding:14px}
-  .account-form{margin:8px 0;padding:8px}
-}
-@media (max-width: 360px) and (orientation: portrait) {
-  .hud{left:5px;right:5px;gap:3px}
-  .speed-box,.race-box,.position-box{padding:5px}
-  .steer{width:40px;min-width:40px}
-  .control{min-width:38px;padding:0 4px}
-  .gas{min-width:48px}
-  .actions{gap:3px}
-}
-
 /* Velocity Run is designed for landscape play on phones and tablets. */
 @media (orientation: portrait) and (pointer: coarse) {
   #game::after {
