@@ -1,87 +1,46 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <link rel="stylesheet" href="./src/style.scss" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <title>Open World Action Game</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no" />
+    <meta name="theme-color" content="#080c12" />
+    <meta name="description" content="Velocity Run — high-speed arcade racing." />
+    <title>VELOCITY RUN</title>
   </head>
   <body>
-    <div id="progress"><div id="bar"></div></div>
-    <button id="rotate-screen-btn" type="button">ROTATE TO LANDSCAPE</button>
-
-    <div id="mini-map-wrap" aria-label="Nearby radar">
-      <canvas id="mini-map" width="144" height="144"></canvas>
-      <span class="radar-label">CITY RADAR</span>
-    </div>
-    <button id="pause-btn" type="button" aria-label="Pause game">Ⅱ</button>
-    <div id="pause-menu" aria-hidden="true">
-      <div class="pause-card">
-        <div class="pause-kicker">OPEN WORLD</div>
-        <h2>PAUSED</h2>
-        <p>Your game is waiting.</p>
-        <button id="resume-btn" type="button">RESUME GAME</button>
+    <div id="game-root">
+      <canvas id="game-canvas" aria-label="Velocity Run 3D racing game"></canvas>
+      <div id="boot-screen"><div class="boot-mark">VR</div><div class="boot-title">VELOCITY RUN</div><div class="boot-sub">INITIALIZING RACE SYSTEMS</div><div class="boot-track"><i></i></div></div>
+      <div id="error-screen" hidden></div>
+      <header class="top-hud">
+        <div class="brand"><b>VELOCITY</b><span>RUN / TEST DRIVE</span></div>
+        <div class="race-readout"><span class="readout-label">SPEED</span><strong id="speed">000</strong><small>KM/H</small></div>
+        <button id="debug-toggle" class="micro-button" aria-label="Toggle diagnostics">DBG</button>
+      </header>
+      <section class="nitro-wrap">
+        <div class="nitro-head"><span id="boost-label">NITRO SYSTEM</span><span id="nitro-percent">000%</span></div>
+        <div class="nitro-bar"><i id="nitro-fill"></i><b id="perfect-marker"></b><span id="perfect-label">PERFECT</span></div>
+      </section>
+      <div id="drift-score" class="drift-score"></div>
+      <div id="boost-flash" class="boost-flash"></div>
+      <div class="control-mode"><button id="mode-touch" class="mode-choice active">TOUCHDRIVE</button><button id="mode-manual" class="mode-choice">MANUAL</button></div>
+      <div class="touch-controls">
+        <div class="steer-pad"><button id="steer-left" class="steer-button">‹</button><button id="steer-right" class="steer-button">›</button></div>
+        <div class="action-pad"><button id="drift-button" class="action-button drift-button">DRIFT</button><button id="nitro-button" class="action-button nitro-button"><span>NITRO</span><b>BOOST</b></button><button id="brake-button" class="action-button brake-button">BRAKE</button><button id="gas-button" class="action-button gas-button">GAS</button></div>
       </div>
-    </div>
-    <!-- Camera Mode Toggle -->
-    <div id="camera-controls">
-      <div class="camera-mode-selector">
-        <button id="tpp-mode-btn" class="mode-btn active" data-mode="tpp">
-          <span class="mode-icon">👤</span>
-          <span class="mode-label">TPP</span>
-        </button>
-        <button id="orbit-mode-btn" class="mode-btn" data-mode="orbit">
-          <span class="mode-icon">🔄</span>
-          <span class="mode-label">Orbit</span>
-        </button>
-      </div>
-    </div>
-
-    <!-- Mobile Controls -->
-    <div id="mobile-controls">
-      <!-- Virtual Joystick -->
-      <div id="virtual-joystick" class="joystick-container">
-        <div class="joystick-base">
-          <div class="joystick-knob" id="joystick-knob"></div>
+      <aside id="debug-panel" class="debug-panel" hidden>
+        <div class="debug-title">LIVE TELEMETRY <button id="debug-close">×</button></div>
+        <div class="debug-grid">
+          <span>FPS <b id="debug-fps">--</b></span><span>SPEED <b id="debug-speed">--</b></span>
+          <span>SLIP ANGLE <b id="debug-slip">--</b></span><span>DRIFT <b id="debug-drift">OFF</b></span>
+          <span>NITRO <b id="debug-nitro">--</b></span><span>QUALITY <b id="debug-quality">--</b></span>
         </div>
-      </div>
-
-      <!-- Fallback WASD Controls (can be hidden) -->
-      <div id="movement-pad" class="fallback-controls">
-        <button class="control-btn" id="btn-w" data-key="KeyW">W</button>
-        <div class="control-row">
-          <button class="control-btn" id="btn-a" data-key="KeyA">A</button>
-          <button class="control-btn" id="btn-s" data-key="KeyS">S</button>
-          <button class="control-btn" id="btn-d" data-key="KeyD">D</button>
-        </div>
-
-        <button class="control-btn space-btn" id="btn-space" data-key="Space">
-          JUMP (SPACE)
-        </button>
-        <button
-          class="control-btn sprint-btn"
-          id="btn-sprint"
-          data-key="ShiftLeft"
-        >
-          SPRINT (SHIFT)
-        </button>
-      </div>
+        <div class="debug-errors"><b>RUNTIME ERRORS</b><pre id="debug-errors">None</pre></div>
+        <div class="debug-hint">Tap DBG to hide · Hold DRIFT while steering</div>
+      </aside>
+      <footer class="bottom-hud"><span>TEST CIRCUIT 01</span><span id="drive-state">TOUCHDRIVE ACTIVE</span><span>BUILD M1</span></footer>
+      <div id="landscape-hint">ROTATE YOUR PHONE TO LANDSCAPE</div>
     </div>
-
-    <div id="wanted-level" class="wanted-level">WANTED  ☆☆☆☆☆</div>
-    <button id="crime-btn" class="crime-btn" type="button">COMMIT CRIME</button>
-    <div id="aim-reticle" class="aim-reticle" aria-hidden="true"><span></span></div>
-    <div id="ammo-hud" class="ammo-hud">PISTOL 12 / 60</div>
-    <button id="jump-btn" class="hud-action jump-btn" type="button">JUMP</button>
-    <button id="gas-btn" class="hud-action gas-btn" type="button">GAS</button>
-    <button id="brake-btn" class="hud-action brake-btn" type="button">BRAKE</button>
-    <button id="fire-btn" class="combat-btn fire-btn" type="button">FIRE</button>
-    <button id="reload-btn" class="combat-btn reload-btn" type="button">RELOAD</button>
-    <button id="run-btn" class="run-btn" type="button">RUN</button>
-    <button id="vehicle-btn" class="vehicle-btn" type="button">ENTER CAR</button>
-
-    <canvas id="three"></canvas>
-    <script type="module" src="/src/index.js"></script>
+    <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
