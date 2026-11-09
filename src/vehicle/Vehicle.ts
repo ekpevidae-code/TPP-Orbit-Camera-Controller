@@ -63,23 +63,23 @@ export class Vehicle {
     vF = Math.max(0, vF - vF * 0.018 * dt);
 
     // Steering ramps in and out; high-speed steering has a deliberately smaller yaw rate.
-    this.steer = damp(this.steer, clamp(input.steer, -1, 1), 3.4, dt);
+    this.steer = damp(this.steer, clamp(input.steer, -1, 1), 1.9, dt);
     const handbrake = !!input.handbrake && this.speedKmh > 55;
     this.drifting = handbrake;
-    const yawAtSpeed = 0.92 - speedRatio * 0.48;
+    const yawAtSpeed = 0.58 - speedRatio * 0.30;
     const yawRate = this.steer * yawAtSpeed * this.s.handling * (handbrake ? 1.16 : 1);
     this.heading += yawRate * dt;
 
     if (handbrake) {
       // Controlled rear slip: enough angle to see a drift, never a sudden spin.
-      vL += this.steer * vF * 0.12 * dt;
-      vL *= Math.exp(-T.gripDrift * 0.42 * dt);
+      vL += this.steer * vF * 0.42 * dt;
+      vL *= Math.exp(-T.gripDrift * 0.30 * dt);
       if (this.speedKmh > 60) {
         this.addNitro(T.nitroDriftCharge * dt);
         this.driftScore += this.speedKmh * Math.abs(vL) * dt * 0.08;
       }
     } else {
-      vL *= Math.exp(-7.5 * dt);
+      vL *= Math.exp(-10.5 * dt);
     }
 
     // Let the chassis gently settle toward its direction of travel after releasing steering.
