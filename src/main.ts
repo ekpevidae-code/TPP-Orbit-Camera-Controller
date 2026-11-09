@@ -21,9 +21,14 @@ const runtimeErrors: string[] = [];
 function reportError(error: unknown) {
   const message = error instanceof Error ? error.stack || error.message : String(error);
   runtimeErrors.push(message.slice(0, 700));
-  ui.errors.textContent = runtimeErrors.slice(-4).join("\n\n");
+  ui.errors.textContent = runtimeErrors.slice(-4).join("
+
+");
   ui.error.hidden = false;
-  ui.error.textContent = "RACE SYSTEM WARNING\n" + runtimeErrors.slice(-2).join("\n\n");
+  ui.error.textContent = "RACE SYSTEM WARNING
+" + runtimeErrors.slice(-2).join("
+
+");
 }
 window.addEventListener("error", e => reportError(e.error || e.message));
 window.addEventListener("unhandledrejection", e => reportError(e.reason));
@@ -213,17 +218,24 @@ const audio = (() => {
     osc2 = ctx.createOscillator(); osc2.type = "triangle"; osc2.frequency.value = 24;
     const subGain = ctx.createGain(); subGain.gain.value = 0.28;
     osc.connect(filter); osc2.connect(subGain); subGain.connect(filter);
-    filter.connect(gain); gain.connect(ctx.destination);\n    tireOsc = ctx.createOscillator(); tireOsc.type = "sawtooth"; tireOsc.frequency.value = 145;\n    tireGain = ctx.createGain(); tireGain.gain.value = 0.0001;\n    const tireFilter = ctx.createBiquadFilter(); tireFilter.type = "bandpass"; tireFilter.frequency.value = 950; tireFilter.Q.value = 0.8;\n    tireOsc.connect(tireFilter); tireFilter.connect(tireGain); tireGain.connect(ctx.destination);\n    osc.start(); osc2.start(); tireOsc.start();
+    filter.connect(gain); gain.connect(ctx.destination);
+    tireOsc = ctx.createOscillator(); tireOsc.type = "sawtooth"; tireOsc.frequency.value = 145;
+    tireGain = ctx.createGain(); tireGain.gain.value = 0.0001;
+    const tireFilter = ctx.createBiquadFilter(); tireFilter.type = "bandpass"; tireFilter.frequency.value = 950; tireFilter.Q.value = 0.8;
+    tireOsc.connect(tireFilter); tireFilter.connect(tireGain); tireGain.connect(ctx.destination);
+    osc.start(); osc2.start(); tireOsc.start();
   }
   return {
     start,
-    update(s: number, boost: boolean) {
-      if (!ctx || !osc || !osc2 || !gain || !filter) return;
+    update(s: number, boost: boolean, drifting: boolean) {
+      if (!ctx || !osc || !osc2 || !gain || !filter || !tireOsc || !tireGain) return;
       const rpm = 38 + s * 0.48 + (boost ? 22 : 0);
       osc.frequency.setTargetAtTime(rpm,ctx.currentTime,0.1);
       osc2.frequency.setTargetAtTime(rpm*0.5,ctx.currentTime,0.1);
       filter.frequency.setTargetAtTime(240 + s*5 + (boost?650:0),ctx.currentTime,0.14);
-      gain.gain.setTargetAtTime(0.004 + Math.min(s/320,1)*0.014,ctx.currentTime,0.16);\n      tireOsc.frequency.setTargetAtTime(125 + Math.min(s,220) * 1.1, ctx.currentTime, 0.08);\n      tireGain.gain.setTargetAtTime(drifting ? 0.018 : 0.0001, ctx.currentTime, 0.12);
+      gain.gain.setTargetAtTime(0.004 + Math.min(s/320,1)*0.014,ctx.currentTime,0.16);
+      tireOsc.frequency.setTargetAtTime(125 + Math.min(s,220) * 1.1, ctx.currentTime, 0.08);
+      tireGain.gain.setTargetAtTime(drifting ? 0.018 : 0.0001, ctx.currentTime, 0.12);
     },
     burst() {
       if (!ctx) return;
