@@ -67,53 +67,56 @@ ground.position.set(0, -0.14, -1400);
 ground.receiveShadow = true;
 scene.add(ground);
 
-// A long closed-loop-inspired circuit, built from straight road sections and broad bends.
+// Sweeping urban sprint circuit: a continuous S-bend road ribbon with aligned markings and barriers.
 const road = new THREE.Group();
 scene.add(road);
 const roadLength = 2800;
 const roadWidth = 17;
-const roadMesh = new THREE.Mesh(new THREE.PlaneGeometry(roadWidth, roadLength), mats.asphalt);
-roadMesh.rotation.x = -Math.PI / 2;
-roadMesh.position.set(0, 0, -roadLength / 2 + 25);
-roadMesh.receiveShadow = true;
-road.add(roadMesh);
-for (let x of [-roadWidth / 2, roadWidth / 2]) {
-  const edge = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.12, roadLength), mats.curb);
-  edge.position.set(x, 0.055, -roadLength / 2 + 25);
-  road.add(edge);
+const trackCenter = z => 12*Math.sin((z+120)/330) + 4*Math.sin(z/1150);
+const trackSlope = z => (trackCenter(z+1)-trackCenter(z-1))/2;
+const trackYaw = z => Math.atan(trackSlope(z));
+const trackPoint = (z,lateral=0,y=0) => {
+  const yaw=trackYaw(z);
+  return new THREE.Vector3(trackCenter(z)+Math.cos(yaw)*lateral,y,z+Math.sin(yaw)*lateral);
+};
+const sampleCount = Math.ceil(roadLength/8)+1;
+const roadPositions=[], roadUvs=[], roadIndices=[];
+for(let i=0;i<sampleCount;i++){
+  const z=18-i*8, left=trackPoint(z,-roadWidth/2,0), right=trackPoint(z,roadWidth/2,0);
+  roadPositions.push(left.x,0.012,left.z,right.x,0.012,right.z);
+  roadUvs.push(0,i/sampleCount,1,i/sampleCount);
+  if(i<sampleCount-1){const a=i*2,b=a+1,c=a+2,d=a+3;roadIndices.push(a,b,c,b,d,c);}
 }
-const dashCount = Math.ceil((roadLength - 25) / 12);
-const dashInstances = new THREE.InstancedMesh(new THREE.BoxGeometry(0.16, 0.025, 5.2), mats.line, dashCount);
-const marker = new THREE.Object3D();
-for (let i = 0; i < dashCount; i++) {
-  marker.position.set(0, 0.025, 10 - i * 12);
-  marker.updateMatrix();
-  dashInstances.setMatrixAt(i, marker.matrix);
+const roadGeometry=new THREE.BufferGeometry();
+roadGeometry.setAttribute('position',new THREE.Float32BufferAttribute(roadPositions,3));
+roadGeometry.setAttribute('uv',new THREE.Float32BufferAttribute(roadUvs,2));
+roadGeometry.setIndex(roadIndices);
+roadGeometry.computeVertexNormals();
+const roadMesh=new THREE.Mesh(roadGeometry,mats.asphalt);
+roadMesh.receiveShadow=true;road.add(roadMesh);
+const marker=new THREE.Object3D();
+const dashCount=Math.ceil((roadLength-25)/12);
+const dashInstances=new THREE.InstancedMesh(new THREE.BoxGeometry(0.16,0.025,5.2),mats.line,dashCount);
+for(let i=0;i<dashCount;i++){
+  const z=10-i*12,p=trackPoint(z,0,0.035);
+  marker.position.copy(p);marker.rotation.set(0,trackYaw(z),0);marker.updateMatrix();
+  dashInstances.setMatrixAt(i,marker.matrix);
 }
-dashInstances.instanceMatrix.needsUpdate = true;
-road.add(dashInstances);
-const railCount = Math.ceil(roadLength / 22);
-const railWhite = new THREE.InstancedMesh(new THREE.BoxGeometry(0.22, 0.65, 19), new THREE.MeshStandardMaterial({color:0xe5e5e5,roughness:0.7}), railCount * 2);
-const railRed = new THREE.InstancedMesh(new THREE.BoxGeometry(0.22, 0.65, 19), new THREE.MeshStandardMaterial({color:0xb83a31,roughness:0.7}), railCount * 2);
-let whiteIndex = 0;
-let redIndex = 0;
-for (const side of [-1, 1]) {
-  for (let i = 0; i < railCount; i++) {
-    marker.position.set(side * 9.15, 0.37, -i * 22);
-    marker.updateMatrix();
-    if (i % 2 === 0) railWhite.setMatrixAt(whiteIndex++, marker.matrix);
-    else railRed.setMatrixAt(redIndex++, marker.matrix);
-  }
+dashInstances.instanceMatrix.needsUpdate=true;road.add(dashInstances);
+const railCount=Math.ceil(roadLength/18);
+const railWhite=new THREE.InstancedMesh(new THREE.BoxGeometry(0.22,0.68,16),new THREE.MeshStandardMaterial({color:0xe5e5e5,roughness:0.7}),railCount*2);
+const railRed=new THREE.InstancedMesh(new THREE.BoxGeometry(0.22,0.68,16),new THREE.MeshStandardMaterial({color:0xb83a31,roughness:0.7}),railCount*2);
+let whiteIndex=0,redIndex=0;
+for(const side of [-1,1])for(let i=0;i<railCount;i++){
+  const z=-i*18,p=trackPoint(z,side*9.15,0.38);
+  marker.position.copy(p);marker.rotation.set(0,trackYaw(z),0);marker.updateMatrix();
+  if(i%2===0)railWhite.setMatrixAt(whiteIndex++,marker.matrix);else railRed.setMatrixAt(redIndex++,marker.matrix);
 }
-railWhite.count = whiteIndex;
-railRed.count = redIndex;
-railWhite.instanceMatrix.needsUpdate = true;
-railRed.instanceMatrix.needsUpdate = true;
-road.add(railWhite, railRed);
-const startLine = new THREE.Mesh(new THREE.PlaneGeometry(roadWidth, 1.5), mats.line);
-startLine.rotation.x = -Math.PI / 2;
-startLine.position.set(0, 0.035, 6);
-road.add(startLine);
+railWhite.count=whiteIndex;railRed.count=redIndex;
+railWhite.instanceMatrix.needsUpdate=true;railRed.instanceMatrix.needsUpdate=true;
+road.add(railWhite,railRed);
+const startLine=new THREE.Mesh(new THREE.BoxGeometry(roadWidth,0.035,1.5),mats.line);
+startLine.position.copy(trackPoint(6,0,0.04));startLine.rotation.y=trackYaw(6);road.add(startLine);
 
 // Hills, trees and trackside details.
 const hillMat = new THREE.MeshStandardMaterial({ color: 0x687e69, roughness: 1 });
@@ -314,7 +317,7 @@ function makeCar(color = 0xe64b25) {
 
 const player = makeCar(0xf04d25);
 player.speed=0;
-player.position.set(0, 0, 4);
+player.position.set(trackCenter(4), 0, 4);
 const rivals = [
   { car: makeCar(0x246acb), x: -3.4, z: -28, speed: 0.9 },
   { car: makeCar(0xe6e8e9), x: 3.3, z: -48, speed: 0.84 },
@@ -323,13 +326,13 @@ const rivals = [
   { car: makeCar(0x7b8793), x: -5.0, z: -120, speed: 0.78 }
 ];
 
-rivals.forEach(r => r.car.position.set(r.x, 0, r.z));
+rivals.forEach(r => {r.car.position.set(trackCenter(r.z)+r.x,0,r.z);r.car.rotation.y=trackYaw(r.z);});
 // Civilian traffic is deliberately slower and uses the outside lanes.
 const traffic=[{car:makeCar(0x68727e),x:-5.1,z:-95,speed:0.58},{car:makeCar(0xd7d1c3),x:5.0,z:-165,speed:0.62},{car:makeCar(0x314c54),x:1.7,z:-230,speed:0.55}];
-traffic.forEach(t=>{t.car.scale.setScalar(0.88);t.car.position.set(t.x,0,t.z);});
+traffic.forEach(t=>{t.car.scale.setScalar(0.88);t.car.position.set(trackCenter(t.z)+t.x,0,t.z);t.car.rotation.y=trackYaw(t.z);});
 // Visible launch ramps line up with the stunt checkpoints.
 const ramps=[-300,-850,-1470];
-ramps.forEach((z,i)=>{const ramp=new THREE.Mesh(new THREE.BoxGeometry(6.2,0.7,7),new THREE.MeshStandardMaterial({color:i===1?0x21b9d5:0xffa43b,metalness:0.35,roughness:0.3,emissive:i===1?0x063d48:0x3a1600,emissiveIntensity:0.35}));ramp.position.set(i===1?2.5:-2.3,0.42,z);ramp.rotation.x=-0.16;ramp.castShadow=true;ramp.receiveShadow=true;scene.add(ramp);});
+ramps.forEach((z,i)=>{const ramp=new THREE.Mesh(new THREE.BoxGeometry(6.2,0.7,7),new THREE.MeshStandardMaterial({color:i===1?0x21b9d5:0xffa43b,metalness:0.35,roughness:0.3,emissive:i===1?0x063d48:0x3a1600,emissiveIntensity:0.35}));ramp.position.copy(trackPoint(z,i===1?2.5:-2.3,0.42));ramp.rotation.set(-0.16,trackYaw(z),0);ramp.castShadow=true;ramp.receiveShadow=true;scene.add(ramp);});
 
 
 const gameStates=new GameStateManager(GAME_STATES.MENU);
@@ -409,7 +412,7 @@ function startRace() {
 function resetRace() {
   state.speed = 0; player.speed=0;nitroSystem.reset(VEHICLES[state.selectedCar||0].nitro);gameStates.transition(GAME_STATES.GARAGE); state.steer = 0; state.drift = 0; state.nitro = nitroSystem.value; state.distance = 0; state.driftScore = 0; state.driftTime = 0; state.driftToastTime = 0; state.airborne=0;state.stuntSpin=0;state.stuntRoll=0;state.stuntDone=false;state.nitroMode=0;state.shockwave=0;state.perfect=0;state.rampIndex=0;
   state.running = false; state.paused = false; state.finished = false; state.gas=false;state.brake=false;state.left=false;state.right=false;state.nitroOn=false;nitroButton.classList.remove('pressed');
-  player.position.set(0, 0, 4); player.rotation.set(0, 0, 0);
+  player.position.set(trackCenter(4), 0, 4); player.rotation.set(0, 0, 0);
   vehiclePhysics.reset();
   rivals.forEach((r, i) => { r.car.position.set(r.x, 0, -28 - i * 20); r.car.rotation.set(0, 0, 0); });
   aiControllers.forEach(ai=>{ai.index=0;});
@@ -526,7 +529,7 @@ function animate(dtOverride) {
       state.driftToastTime = Math.max(0, state.driftToastTime - dt);
       if (!state.driftToastTime) ui.driftToast.classList.remove('show');
     }
-    player.position.x+=(physics.lateral*0.22*speedFactor+state.drift*3.4)*dt;if(collisions.guardrail(player.position.x,7.7)&&!nitroState.shockwave){player.position.x=clamp(player.position.x,-7.2,7.2);player.speed*=0.72;state.speed=player.speed;state.steer*=-0.35;crashTime=Math.max(crashTime,0.22);arcadeFX.sparks();}
+    const trackOffset=player.position.x-trackCenter(player.position.z);const nextOffset=trackOffset+(physics.lateral*0.22*speedFactor+state.drift*3.4)*dt;player.position.x=trackCenter(player.position.z)+nextOffset;if(Math.abs(nextOffset)>7.7&&!nitroState.shockwave){player.position.x=trackCenter(player.position.z)+clamp(nextOffset,-7.2,7.2);player.speed*=0.72;state.speed=player.speed;state.steer*=-0.35;crashTime=Math.max(crashTime,0.22);arcadeFX.sparks();}
     player.position.z -= state.speed * dt * 0.46;
     if(state.airborne>0){state.airborne=Math.max(0,state.airborne-dt);state.stuntSpin+=state.stuntSpinRate*dt;player.position.y=0.8+Math.sin((1.1-state.airborne)/1.1*Math.PI)*2.5;state.stuntRoll+=state.steer*dt*4.2;if(state.airborne===0){player.position.y=0;if(state.stuntDone){nitroSystem.add(28);state.nitro=nitroSystem.value;state.driftScore+=500;ui.nitroLabel.textContent='LANDING +NITRO';}state.stuntDone=false;state.stuntSpin=0;state.stuntSpinRate=0;}}
     const stuntAt=[0.42,1.18,2.05];if(state.rampIndex<stuntAt.length&&state.distance>=stuntAt[state.rampIndex]){state.airborne=1.1;state.stuntDone=false;state.stuntRoll=0;state.stuntSpin=0;state.stuntSpinRate=0;state.rampIndex++;arcadeFX.sparks();}
@@ -534,9 +537,9 @@ function animate(dtOverride) {
     player.rotation.z = (state.airborne>0?state.stuntRoll:0) - state.steer * 0.055 - state.drift * 0.09;
     player.userData.wheels.forEach(w => { w.rotation.x += state.speed * dt * 0.16; if (w.userData.front) w.rotation.y = -state.steer * 0.25; });
     state.distance += state.speed * dt / 3600 * 1.65;
-    aiControllers.forEach(ai=>ai.step(dt,state.speed,player.position.x));
+    aiControllers.forEach(ai=>{ai.step(dt,state.speed,player.position.x-trackCenter(player.position.z));ai.car.position.x+=trackCenter(ai.car.position.z);ai.car.rotation.y=trackYaw(ai.car.position.z);});
     state.nearMissCooldown=Math.max(0,state.nearMissCooldown-dt);
-    traffic.forEach((t,i)=>{t.car.position.z+=state.speed*dt*0.46-(t.speed*11*dt);if(t.car.position.z>13)t.car.position.z=-260-Math.random()*160;t.car.position.x=t.x+Math.sin(clock.elapsedTime*0.22+i)*0.28;const gap=Math.abs(t.car.position.z-player.position.z);const laneGap=Math.abs(t.car.position.x-player.position.x);if(gap<3.2&&laneGap<2.3&&laneGap>1.15&&state.nearMissCooldown===0){nitroSystem.add(12);state.nitro=nitroSystem.value;state.nearMissCooldown=1.2;arcadeFX.sparks();ui.nitroLabel.textContent='NEAR MISS +';}});
+    traffic.forEach((t,i)=>{t.car.position.z+=state.speed*dt*0.46-(t.speed*11*dt);if(t.car.position.z>13)t.car.position.z=-260-Math.random()*160;t.car.position.x=trackCenter(t.car.position.z)+t.x+Math.sin(clock.elapsedTime*0.22+i)*0.28;t.car.rotation.y=trackYaw(t.car.position.z);const gap=Math.abs(t.car.position.z-player.position.z);const laneGap=Math.abs(t.car.position.x-player.position.x);if(gap<3.2&&laneGap<2.3&&laneGap>1.15&&state.nearMissCooldown===0){nitroSystem.add(12);state.nitro=nitroSystem.value;state.nearMissCooldown=1.2;arcadeFX.sparks();ui.nitroLabel.textContent='NEAR MISS +';}});
 
     const collision=collisions.hit(player,[...traffic.map(t=>t.car),...rivals.map(r=>r.car)]);if(collision&&!nitroState.shockwave&&crashTime<=0){player.speed*=0.48;state.speed=player.speed;crashTime=0.85;collision.position.z-=7;ui.nitroLabel.textContent='CRASH!';arcadeFX.sparks();}crashTime=Math.max(0,crashTime-dt);
     camera.fov=THREE.MathUtils.damp(camera.fov,66+Math.max(0,state.speed-25)*0.42+((usingNitro||nitroState.shockwave)?10:0)+(nitroState.shockwave?7:0),5.5,dt);camera.updateProjectionMatrix();
