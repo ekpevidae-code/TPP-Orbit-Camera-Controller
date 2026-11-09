@@ -414,9 +414,9 @@ function resetRace() {
   state.running = false; state.paused = false; state.finished = false; state.gas=false;state.brake=false;state.left=false;state.right=false;state.nitroOn=false;nitroButton.classList.remove('pressed');
   player.position.set(trackCenter(4), 0, 4); player.rotation.set(0, 0, 0);
   vehiclePhysics.reset();
-  rivals.forEach((r, i) => { r.car.position.set(r.x, 0, -28 - i * 20); r.car.rotation.set(0, 0, 0); });
+  rivals.forEach((r, i) => { const z=-28-i*20;r.car.position.set(trackCenter(z)+r.x,0,z);r.car.rotation.set(0,trackYaw(z),0); });
   aiControllers.forEach(ai=>{ai.index=0;});
-  traffic.forEach((t,i)=>{t.car.position.set(t.x,0,[-95,-165,-230][i]??(-95-i*70));t.car.rotation.set(0,0,0);});
+  traffic.forEach((t,i)=>{const z=[-95,-165,-230][i]??(-95-i*70);t.car.position.set(trackCenter(z)+t.x,0,z);t.car.rotation.set(0,trackYaw(z),0);});
   ui.finish.classList.add('hidden'); ui.pause.classList.add('hidden');
   ui.message.style.opacity = '1'; ui.message.querySelector('strong').textContent = 'READY?';
   ui.message.querySelector('span').textContent = 'Tap RACE to start your run';
@@ -530,14 +530,14 @@ function animate(dtOverride) {
       if (!state.driftToastTime) ui.driftToast.classList.remove('show');
     }
     const trackOffset=player.position.x-trackCenter(player.position.z);const nextOffset=trackOffset+(physics.lateral*0.22*speedFactor+state.drift*3.4)*dt;player.position.x=trackCenter(player.position.z)+nextOffset;if(Math.abs(nextOffset)>7.7&&!nitroState.shockwave){player.position.x=trackCenter(player.position.z)+clamp(nextOffset,-7.2,7.2);player.speed*=0.72;state.speed=player.speed;state.steer*=-0.35;crashTime=Math.max(crashTime,0.22);arcadeFX.sparks();}
-    player.position.z -= state.speed * dt * 0.46;
+    player.position.z -= state.speed * dt * 0.46;player.position.x+=trackCenter(player.position.z)-trackCenter(player.position.z+state.speed*dt*0.46);
     if(state.airborne>0){state.airborne=Math.max(0,state.airborne-dt);state.stuntSpin+=state.stuntSpinRate*dt;player.position.y=0.8+Math.sin((1.1-state.airborne)/1.1*Math.PI)*2.5;state.stuntRoll+=state.steer*dt*4.2;if(state.airborne===0){player.position.y=0;if(state.stuntDone){nitroSystem.add(28);state.nitro=nitroSystem.value;state.driftScore+=500;ui.nitroLabel.textContent='LANDING +NITRO';}state.stuntDone=false;state.stuntSpin=0;state.stuntSpinRate=0;}}
     const stuntAt=[0.42,1.18,2.05];if(state.rampIndex<stuntAt.length&&state.distance>=stuntAt[state.rampIndex]){state.airborne=1.1;state.stuntDone=false;state.stuntRoll=0;state.stuntSpin=0;state.stuntSpinRate=0;state.rampIndex++;arcadeFX.sparks();}
     player.rotation.y = state.stuntSpin - state.steer * 0.16 - state.drift * 0.18;
     player.rotation.z = (state.airborne>0?state.stuntRoll:0) - state.steer * 0.055 - state.drift * 0.09;
     player.userData.wheels.forEach(w => { w.rotation.x += state.speed * dt * 0.16; if (w.userData.front) w.rotation.y = -state.steer * 0.25; });
     state.distance += state.speed * dt / 3600 * 1.65;
-    aiControllers.forEach(ai=>{ai.step(dt,state.speed,player.position.x-trackCenter(player.position.z));ai.car.position.x+=trackCenter(ai.car.position.z);ai.car.rotation.y=trackYaw(ai.car.position.z);});
+    aiControllers.forEach(ai=>{ai.car.position.x-=trackCenter(ai.car.position.z);ai.step(dt,state.speed,player.position.x-trackCenter(player.position.z));ai.car.position.x+=trackCenter(ai.car.position.z);ai.car.rotation.y=trackYaw(ai.car.position.z);});
     state.nearMissCooldown=Math.max(0,state.nearMissCooldown-dt);
     traffic.forEach((t,i)=>{t.car.position.z+=state.speed*dt*0.46-(t.speed*11*dt);if(t.car.position.z>13)t.car.position.z=-260-Math.random()*160;t.car.position.x=trackCenter(t.car.position.z)+t.x+Math.sin(clock.elapsedTime*0.22+i)*0.28;t.car.rotation.y=trackYaw(t.car.position.z);const gap=Math.abs(t.car.position.z-player.position.z);const laneGap=Math.abs(t.car.position.x-player.position.x);if(gap<3.2&&laneGap<2.3&&laneGap>1.15&&state.nearMissCooldown===0){nitroSystem.add(12);state.nitro=nitroSystem.value;state.nearMissCooldown=1.2;arcadeFX.sparks();ui.nitroLabel.textContent='NEAR MISS +';}});
 
