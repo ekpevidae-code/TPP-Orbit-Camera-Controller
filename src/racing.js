@@ -343,7 +343,7 @@ const state = { serverPlayerCarId: null, serverCarModelId: 'falcon-gt', speed: 0
 const hud = new RaceHUD();
 const arcadeFX = createArcadeFX(scene,camera,renderer,player);
 let countdownRemaining=0, crashTime=0;
-const aiControllers=rivals.map((r,i)=>new WaypointRacerAI(r.car,[{x:r.x,z:-100},{x:r.x*0.65,z:-430},{x:r.x,z:-900},{x:r.x*0.8,z:-1500}],r.speed));
+const aiControllers=rivals.map((r,i)=>new WaypointRacerAI(r.car,[{x:r.x,z:-100},{x:r.x*0.65,z:-60},{x:r.x,z:-20},{x:r.x*0.8,z:10}],r.speed));
 const unsubscribeState=gameStates.on('change',({current,previous})=>{if(ui.state)ui.state.textContent=current.replace('_',' ');document.body.dataset.gameState=current;ui.garage?.classList.toggle('hidden',current!==GAME_STATES.GARAGE);ui.pause?.classList.toggle('hidden',current!==GAME_STATES.PAUSED);if(current===GAME_STATES.GAME_OVER)ui.finish?.classList.remove('hidden');if(previous===GAME_STATES.PAUSED&&current===GAME_STATES.RACING)ui.pause?.classList.add('hidden');});
 gameStates.transition(GAME_STATES.GARAGE);
 const totalDistance = 3.0;
