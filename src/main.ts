@@ -1,5 +1,7 @@
 import * as THREE from "three";
 import { GAME_CONFIG, type QualityLevel } from "./config/gameConfig";
+import { Vehicle } from "./vehicle/Vehicle";
+import { updateChaseCamera } from "./core/chaseCamera";
 import "./style.css";
 
 type DriveMode = "TOUCHDRIVE" | "MANUAL";
@@ -168,11 +170,13 @@ function emitParticle(kind: "smoke" | "spark", position: THREE.Vector3) {
 const skidGroup = new THREE.Group(); scene.add(skidGroup);
 const skidMat = new THREE.MeshBasicMaterial({ color: 0x10151a, transparent: true, opacity: 0.62, depthWrite: false });
 let skidTimer = 0;
-let speed = 0, lateral = 0, heading = 0, slipAngle = 0, nitro = 0.34, nitroTime = 0, driftTime = 0, driftPoints = 0, driftActive = false, perfectArmed = false;
+let speed = 0, slipAngle = 0, nitro = 0.5, nitroTime = 0, driftTime = 0, driftPoints = 0, driftActive = false, perfectArmed = false;
+const vehicle = new Vehicle({ topSpeed: 300, accel: 22, handling: 1, nitroPower: 1 });
+let nitroPending = false, previousBoost = false;
 let mode: DriveMode = "TOUCHDRIVE";
 let quality: QualityLevel = "MEDIUM";
 let elapsed = 0;
-const input: InputState = { steer: 0, throttle: 1, brake: false, drift: false, nitro: false };
+const input: InputState = { steer: 0, throttle: 0, brake: false, drift: false, nitro: false };
 const clock = new THREE.Clock();
 let fpsFrames = 0, fpsTime = 0, fpsValue = 0;
 let shake = 0;
@@ -201,112 +205,42 @@ const audio = (() => {
   };
 })();
 function startNitro() {
-  if (nitro <= 0.03 || nitroTime > 0) return;
-  const perfect = perfectArmed && nitro > 0.5;
-  nitroTime = perfect ? 4.2 : GAME_CONFIG.nitro.duration;
-  nitro = Math.max(0, nitro - (perfect ? 0.28 : 0.18));
-  speed += GAME_CONFIG.nitro.instantKick * (perfect ? 1.45 : 1);
-  perfectArmed = false; shake = Math.max(shake, 0.35); audio.burst();
-  ui.boostLabel.textContent = perfect ? "PERFECT NITRO" : "NITRO SYSTEM";
-  ui.boostFlash.classList.add("active", perfect ? "perfect" : "normal");
-  window.setTimeout(() => ui.boostFlash.classList.remove("active", "perfect", "normal"), 420);
-}
-function setMode(next: DriveMode) {
-  mode = next;
-  $("mode-touch").classList.toggle("active", mode === "TOUCHDRIVE");
-  $("mode-manual").classList.toggle("active", mode === "MANUAL");
-  ui.driveState.textContent = mode + " ACTIVE";
-}
-function bindHold(id: string, onDown: () => void, onUp: () => void) {
-  const el = $(id);
-  el.addEventListener("pointerdown", e => { e.preventDefault(); audio.start(); onDown(); el.classList.add("pressed"); });
-  const up = () => { onUp(); el.classList.remove("pressed"); };
-  el.addEventListener("pointerup", up); el.addEventListener("pointercancel", up); el.addEventListener("lostpointercapture", up);
-}
-bindHold("steer-left", () => input.steer = -1, () => { if (input.steer < 0) input.steer = 0; });
-bindHold("steer-right", () => input.steer = 1, () => { if (input.steer > 0) input.steer = 0; });
-bindHold("drift-button", () => input.drift = true, () => input.drift = false);
-bindHold("brake-button", () => input.brake = true, () => input.brake = false);
-bindHold("gas-button", () => input.throttle = 1, () => input.throttle = 0);
-$("nitro-button").addEventListener("pointerdown", e => { e.preventDefault(); audio.start(); startNitro(); });
-$("mode-touch").addEventListener("click", () => setMode("TOUCHDRIVE"));
-$("mode-manual").addEventListener("click", () => setMode("MANUAL"));
-$("debug-toggle").addEventListener("click", () => ui.debug.hidden = !ui.debug.hidden);
-$("debug-close").addEventListener("click", () => ui.debug.hidden = true);
-window.addEventListener("keydown", e => {
-  if (e.repeat) return;
-  audio.start();
-  if (e.code === "ArrowLeft" || e.code === "KeyA") input.steer = -1;
-  if (e.code === "ArrowRight" || e.code === "KeyD") input.steer = 1;
-  if (e.code === "Space") input.drift = true;
-  if (e.code === "ShiftLeft" || e.code === "KeyN") startNitro();
-  if (e.code === "ArrowDown" || e.code === "KeyS") input.brake = true;
-  if (e.code === "ArrowUp" || e.code === "KeyW") input.throttle = 1;
-});
-window.addEventListener("keyup", e => {
-  if (e.code === "ArrowLeft" || e.code === "KeyA" || e.code === "ArrowRight" || e.code === "KeyD") input.steer = 0;
-  if (e.code === "Space") input.drift = false;
-  if (e.code === "ArrowDown" || e.code === "KeyS") input.brake = false;
-  if (e.code === "ArrowUp" || e.code === "KeyW") input.throttle = 0;
-});
-let touchStartX = 0;
-ui.canvas.addEventListener("pointerdown", e => { touchStartX = e.clientX; });
-ui.canvas.addEventListener("pointermove", e => {
-  if (e.buttons && mode === "TOUCHDRIVE") input.steer = THREE.MathUtils.clamp((e.clientX - touchStartX) / 80, -1, 1);
-});
-ui.canvas.addEventListener("pointerup", () => { if (mode === "TOUCHDRIVE") input.steer = 0; });
-
-function chooseQuality() {
-  const ratio = Math.min(devicePixelRatio || 1, GAME_CONFIG.graphics.maxPixelRatio);
-  renderer.setPixelRatio(ratio);
-  renderer.setSize(innerWidth, innerHeight, false);
-  const started = performance.now();
-  let frames = 0;
-  const sample = () => {
-    frames++;
-    if (performance.now() - started < GAME_CONFIG.graphics.qualityTestSeconds * 1000) requestAnimationFrame(sample);
-    else {
-      const avg = frames / ((performance.now() - started) / 1000);
-      quality = avg >= 52 ? "HIGH" : avg >= 34 ? "MEDIUM" : "LOW";
-      ui.quality.textContent = quality;
-      renderer.shadowMap.enabled = quality !== "LOW";
-      renderer.setPixelRatio(Math.min(devicePixelRatio || 1, quality === "HIGH" ? 2 : quality === "MEDIUM" ? 1.5 : 1.15));
-      renderer.setSize(innerWidth, innerHeight, false);
-      ui.boot.classList.add("done");
-      window.setTimeout(() => ui.boot.remove(), 650);
-      requestAnimationFrame(loop);
-    }
-  };
-  requestAnimationFrame(sample);
+  if (vehicle.nitro < 0.25 || vehicle.nitroActive) return;
+  nitroPending = true;
 }
 function update(dt: number) {
   elapsed += dt;
-  const speedNorm = THREE.MathUtils.clamp(speed / GAME_CONFIG.vehicle.maxSpeedKmh, 0, 1.25);
-  const boost = nitroTime > 0;
   const steer = input.steer;
-  if (mode === "TOUCHDRIVE") {
-    speed += (GAME_CONFIG.vehicle.acceleration * 0.74) * dt;
-  } else {
-    speed += (input.throttle ? GAME_CONFIG.vehicle.acceleration : -GAME_CONFIG.vehicle.rollingResistance * 2) * dt;
+  const throttle = mode === "TOUCHDRIVE" ? 1 : input.throttle;
+  const wasBoosting = vehicle.nitroActive;
+  vehicle.update(dt, {
+    steer,
+    throttle,
+    brake: input.brake ? 1 : 0,
+    handbrake: input.drift,
+    nitroPressed: nitroPending
+  });
+  nitroPending = false;
+  speed = vehicle.speedKmh;
+  nitro = vehicle.nitro;
+  nitroTime = vehicle.nitroTimer;
+  driftActive = vehicle.drifting;
+  slipAngle = vehicle.slipAngle * 180 / Math.PI;
+  const boost = vehicle.nitroActive;
+  const speedNorm = THREE.MathUtils.clamp(speed / vehicle.s.topSpeed, 0, 1.25);
+
+  if (boost && !wasBoosting) {
+    shake = Math.max(shake, 0.35);
+    audio.burst();
+    ui.boostLabel.textContent = "NITRO SYSTEM";
+    ui.boostFlash.classList.add("active", "normal");
+    window.setTimeout(() => ui.boostFlash.classList.remove("active", "normal"), 420);
   }
-  if (input.brake) speed -= GAME_CONFIG.vehicle.brakeForce * dt;
-  if (boost) {
-    nitroTime = Math.max(0, nitroTime - dt);
-    speed += GAME_CONFIG.vehicle.acceleration * (GAME_CONFIG.nitro.accelerationMultiplier - 1) * dt;
-  }
-  const maxSpeed = GAME_CONFIG.vehicle.maxSpeedKmh * (boost ? GAME_CONFIG.nitro.topSpeedMultiplier : 1);
-  speed = THREE.MathUtils.clamp(speed - speed * speed * GAME_CONFIG.vehicle.drag * 0.001, 0, maxSpeed);
-  const shouldDrift = speed > 72 && (input.drift || Math.abs(steer) > 0.76);
-  driftActive = shouldDrift;
-  const steering = GAME_CONFIG.vehicle.steeringRate * (0.3 + speedNorm * 0.85) * (driftActive ? GAME_CONFIG.vehicle.driftSteeringMultiplier : 1);
-  heading += steer * steering * dt * (0.35 + speedNorm * 0.75);
-  const targetLateral = Math.sin(heading) * speed * 0.013;
-  const grip = driftActive ? GAME_CONFIG.vehicle.driftGrip : GAME_CONFIG.vehicle.lateralGrip;
-  lateral += (targetLateral - lateral) * Math.min(1, grip * dt);
-  slipAngle = Math.atan2(lateral, Math.max(speed * 0.013, 0.1)) * 180 / Math.PI;
-  if (driftActive) {
-    driftTime += dt; driftPoints += dt * (80 + speed * 1.5);
-    nitro = Math.min(1, nitro + GAME_CONFIG.nitro.driftChargePerSecond * dt);
+  if (!boost && wasBoosting) ui.boostLabel.textContent = "NITRO SYSTEM";
+
+  if (driftActive && speed > 60) {
+    driftTime += dt;
+    driftPoints = vehicle.driftScore;
     if (Math.random() < 0.75) {
       for (const x of [-0.76, 0.76]) emitParticle("smoke", car.localToWorld(new THREE.Vector3(x, 0.28, 1.35)));
     }
@@ -315,13 +249,19 @@ function update(dt: number) {
       skidTimer = 0;
       const p = car.localToWorld(new THREE.Vector3(-0.78, 0.03, 1.3));
       const mark = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.012, 0.9), skidMat);
-      mark.position.copy(p); mark.rotation.y = heading; skidGroup.add(mark);
+      mark.position.copy(p); mark.rotation.y = car.rotation.y; skidGroup.add(mark);
       if (skidGroup.children.length > 100) skidGroup.remove(skidGroup.children[0]);
     }
   } else {
-    if (driftTime > 0.25) { speed += Math.min(9, driftTime * 1.4); ui.driftScore.textContent = Math.round(driftPoints) + " DRIFT"; ui.driftScore.classList.add("show"); window.setTimeout(() => ui.driftScore.classList.remove("show"), 900); }
-    driftTime = 0; driftPoints = 0;
+    if (driftTime > 0.25) {
+      speed += Math.min(9, driftTime * 1.4);
+      ui.driftScore.textContent = Math.round(driftPoints) + " DRIFT";
+      ui.driftScore.classList.add("show");
+      window.setTimeout(() => ui.driftScore.classList.remove("show"), 900);
+    }
+    driftTime = 0;
   }
+
   if (nitro >= 0.98) perfectArmed = true;
   if (boost && Math.random() < 0.8) {
     const exhausts = car.userData.exhausts as THREE.Mesh[];
@@ -329,32 +269,34 @@ function update(dt: number) {
   } else {
     (car.userData.exhausts as THREE.Mesh[]).forEach(ex => (ex.material as THREE.MeshBasicMaterial).opacity = 0);
   }
-  const maxX = 7.7;
-  car.position.x = THREE.MathUtils.clamp(car.position.x + lateral * dt * 0.42, -maxX, maxX);
+
+  car.position.x = THREE.MathUtils.clamp(vehicle.pos.x, -7.7, 7.7);
   car.position.y = Math.sin(elapsed * 18) * Math.min(speedNorm, 0.8) * 0.025 + (driftActive ? 0.035 : 0);
-  car.rotation.y = heading + (driftActive ? -steer * 0.26 : 0);
+  car.rotation.y = -vehicle.heading;
   car.rotation.z = THREE.MathUtils.damp(car.rotation.z, -steer * speedNorm * 0.09, 5, dt);
   const wheels = car.userData.wheels as { pivot: THREE.Group; spin: THREE.Group }[];
   wheels.forEach((w, i) => {
     w.spin.rotation.x -= speed * dt * 0.004;
-    if (i < 2) w.pivot.rotation.y = steer * 0.42;
+    if (i < 2) w.pivot.rotation.y = -steer * 0.42;
   });
+
   if (boost) shake = Math.max(shake, 0.08);
   shake = Math.max(0, shake - dt * 0.55);
-  const targetFov = GAME_CONFIG.camera.baseFov + speedNorm * GAME_CONFIG.camera.speedFov + (boost ? GAME_CONFIG.camera.nitroFov : 0);
-  camera.fov = THREE.MathUtils.damp(camera.fov, targetFov, 3.2, dt);
-  camera.updateProjectionMatrix();
-  const camDistance = GAME_CONFIG.camera.baseDistance + speedNorm * 2.5 + (boost ? 0.5 : 0);
-  const camTarget = new THREE.Vector3(car.position.x * 0.72, 1.2, car.position.z + 1.1);
-  const camPos = new THREE.Vector3(car.position.x * 0.55, GAME_CONFIG.camera.height - speedNorm * 0.25, car.position.z + camDistance);
-  camPos.x += (Math.random() - 0.5) * shake;
-  camPos.y += (Math.random() - 0.5) * shake;
-  camera.position.lerp(camPos, 1 - Math.exp(-4.5 * dt));
-  camera.lookAt(camTarget);
-  camera.rotation.z += -steer * 0.012 * speedNorm;
+  const cameraCar = {
+    pos: { x: car.position.x, z: car.position.z },
+    vel: { x: vehicle.vel.x, z: -vehicle.vel.z },
+    heading: vehicle.heading,
+    speedKmh: vehicle.speedKmh,
+    nitroBlend: vehicle.nitroBlend,
+    s: vehicle.s
+  };
+  updateChaseCamera(camera, cameraCar, dt, elapsed);
+  camera.position.x += (Math.random() - 0.5) * shake;
+  camera.position.y += (Math.random() - 0.5) * shake;
   roadside.position.z = (elapsed * speed * 0.075) % 20;
   poles.position.z = (elapsed * speed * 0.075) % 42;
   dashGroup.position.z = (elapsed * speed * 0.075) % 22;
+
   particles.forEach((p, i) => {
     p.life -= dt; p.mesh.position.x += p.vx * dt; p.mesh.position.y += p.vy * dt; p.mesh.position.z += p.vz * dt;
     p.mesh.scale.multiplyScalar(1 + dt * 1.3);
@@ -370,27 +312,4 @@ function update(dt: number) {
   ui.drift.textContent = driftActive ? "ACTIVE" : "OFF";
   ui.drift.style.color = driftActive ? "#ffbb62" : "#9ba9b6";
   ui.dNitro.textContent = Math.round(nitro * 100) + "%";
-}
-function loop() {
-  const dt = Math.min(clock.getDelta(), 0.04);
-  update(dt);
-  fpsFrames++; fpsTime += dt;
-  if (fpsTime >= 0.5) { fpsValue = Math.round(fpsFrames / fpsTime); ui.fps.textContent = String(fpsValue); fpsFrames = 0; fpsTime = 0; }
-  renderer.render(scene, camera);
-  requestAnimationFrame(loop);
-}
-function resize() {
-  camera.aspect = innerWidth / innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(innerWidth, innerHeight, false);
-  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, GAME_CONFIG.graphics.maxPixelRatio));
-}
-window.addEventListener("resize", resize);
-document.addEventListener("visibilitychange", () => { if (document.hidden) input.steer = 0; });
-try {
-  resize();
-  chooseQuality();
-} catch (error) {
-  reportError(error);
-  ui.boot.classList.add("done");
 }
