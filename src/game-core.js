@@ -81,7 +81,19 @@ export class TrafficManager{
 }
 export class WaypointRacerAI{
  constructor(car,waypoints=[],skill=0.86){this.car=car;this.waypoints=waypoints;this.skill=skill;this.index=0;this.speed=skill;}
- step(dt,playerSpeed,playerX){const target=this.waypoints[this.index]??{x:this.car.position.x,z:this.car.position.z-90};if(Math.abs(this.car.position.z-target.z)<18)this.index=(this.index+1)%Math.max(1,this.waypoints.length);const laneTarget=target.x+(Math.abs(playerX-target.x)<2.2?(this.car.position.x<playerX?-1.4:1.4):0);this.car.position.x=THREE.MathUtils.damp(this.car.position.x,laneTarget,1.8,dt);this.car.position.z+=playerSpeed*0.34*dt-this.skill*12*dt;if(this.car.position.z>15)this.car.position.z-=2800;return this.car.position;}
+ step(dt,playerSpeed,playerX){
+  if(this.waypoints.length&&this.index<this.waypoints.length-1&&this.car.position.z>=this.waypoints[this.index].z)this.index++;
+  const target=this.waypoints[this.index]??{x:0,z:0};
+  const evade=Math.abs(playerX-target.x)<2.4?(target.x<=playerX?-1.8:1.8):0;
+  const laneTarget=THREE.MathUtils.clamp(target.x+evade,-6.2,6.2);
+  const previousX=this.car.position.x;
+  this.car.position.x=THREE.MathUtils.damp(previousX,laneTarget,2.8,dt);
+  this.car.rotation.z=THREE.MathUtils.damp(this.car.rotation.z,THREE.MathUtils.clamp((previousX-this.car.position.x)*-0.045,-0.09,0.09),3,dt);
+  this.car.position.z+=playerSpeed*0.34*dt-this.skill*12*dt;
+  // Recycle a passed opponent just ahead of the pack, not thousands of metres away.
+  if(this.car.position.z>15){this.car.position.z-=280;this.index=0;}
+  return this.car.position;
+ }
 }
 export class GameLoop{
  constructor(update,render){this.update=update;this.render=render;this.last=0;this.accumulator=0;this.fixed=1/60;this.frame=0;this.running=false;this.bound=this.tick.bind(this);}
