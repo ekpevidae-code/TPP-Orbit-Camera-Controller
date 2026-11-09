@@ -72,12 +72,12 @@ const road = new THREE.Group();
 scene.add(road);
 const roadLength = 2800;
 const roadWidth = 17;
-const trackCenter = z => 12*Math.sin((z+120)/330) + 4*Math.sin(z/1150);
+const trackCenter = z => 15*Math.sin((z+120)/300) + 5*Math.sin(z/900);
 const trackSlope = z => (trackCenter(z+1)-trackCenter(z-1))/2;
 const trackYaw = z => Math.atan(trackSlope(z));
 const trackPoint = (z,lateral=0,y=0) => {
   const yaw=trackYaw(z);
-  return new THREE.Vector3(trackCenter(z)+Math.cos(yaw)*lateral,y,z+Math.sin(yaw)*lateral);
+  return new THREE.Vector3(trackCenter(z)+Math.cos(yaw)*lateral,y,z-Math.sin(yaw)*lateral);
 };
 const sampleCount = Math.ceil(roadLength/8)+1;
 const roadPositions=[], roadUvs=[], roadIndices=[];
@@ -533,7 +533,7 @@ function animate(dtOverride) {
     player.position.z -= state.speed * dt * 0.46;player.position.x+=trackCenter(player.position.z)-trackCenter(player.position.z+state.speed*dt*0.46);
     if(state.airborne>0){state.airborne=Math.max(0,state.airborne-dt);state.stuntSpin+=state.stuntSpinRate*dt;player.position.y=0.8+Math.sin((1.1-state.airborne)/1.1*Math.PI)*2.5;state.stuntRoll+=state.steer*dt*4.2;if(state.airborne===0){player.position.y=0;if(state.stuntDone){nitroSystem.add(28);state.nitro=nitroSystem.value;state.driftScore+=500;ui.nitroLabel.textContent='LANDING +NITRO';}state.stuntDone=false;state.stuntSpin=0;state.stuntSpinRate=0;}}
     const stuntAt=[0.42,1.18,2.05];if(state.rampIndex<stuntAt.length&&state.distance>=stuntAt[state.rampIndex]){state.airborne=1.1;state.stuntDone=false;state.stuntRoll=0;state.stuntSpin=0;state.stuntSpinRate=0;state.rampIndex++;arcadeFX.sparks();}
-    player.rotation.y = state.stuntSpin - state.steer * 0.16 - state.drift * 0.18;
+    player.rotation.y = state.stuntSpin + trackYaw(player.position.z) - state.steer * 0.16 - state.drift * 0.18;
     player.rotation.z = (state.airborne>0?state.stuntRoll:0) - state.steer * 0.055 - state.drift * 0.09;
     player.userData.wheels.forEach(w => { w.rotation.x += state.speed * dt * 0.16; if (w.userData.front) w.rotation.y = -state.steer * 0.25; });
     state.distance += state.speed * dt / 3600 * 1.65;
