@@ -263,7 +263,7 @@ function update(dt: number) {
   nitro = vehicle.nitro;
   nitroTime = vehicle.nitroTimer;
   driftActive = vehicle.drifting;
-  slipAngle = vehicle.slipAngle * 180 / Math.PI;
+  slipAngle = Math.abs(vehicle.slipAngle) * 180 / Math.PI;
   const boost = vehicle.nitroActive;
   const speedNorm = THREE.MathUtils.clamp(speed / vehicle.s.topSpeed, 0, 1.25);
 
@@ -317,8 +317,12 @@ function update(dt: number) {
   car.rotation.z = THREE.MathUtils.damp(car.rotation.z, -steer * speedNorm * (driftActive ? 0.16 : 0.045), 4.5, dt);
   const wheels = car.userData.wheels as { pivot: THREE.Group; spin: THREE.Group }[];
   wheels.forEach((w, i) => {
+    // All four wheels rotate with road speed; only the front axle steers.
     w.spin.rotation.x -= speed * dt * 0.004;
-    if (i < 2) w.pivot.rotation.y = -vehicle.steer * 0.24;
+    if (i < 2) {
+      const counterSteer = driftActive ? vehicle.slipAngle * 0.72 : 0;
+      w.pivot.rotation.y = THREE.MathUtils.clamp(-vehicle.steer * 0.34 + counterSteer, -0.48, 0.48);
+    }
   });
 
   if (boost) shake = Math.max(shake, 0.08);
